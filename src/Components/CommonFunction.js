@@ -63,11 +63,24 @@ const FormatPhoneLogin = (PhoneNo) => {
 };
 
 const TextBox = (props) => {
-  const { label, onChange, ResJSON, name } = props;
+  const {
+    label,
+    onChange,
+    ResJSON,
+    name,
+    onMouseHover = () => {},
+    onMouseLeave,
+  } = props;
 
   return (
     <>
-      <div className="form-group divInputWrapper">
+      <div
+        className="form-group divInputWrapper"
+        onMouseEnter={(e) => {
+          onMouseHover(e, ResJSON[name]);
+        }}
+        onMouseLeave={onMouseLeave}
+      >
         <label>{label}</label>
         <input
           type="text"
@@ -93,32 +106,86 @@ const TextBox = (props) => {
 };
 
 const DropDown = (props) => {
-  const { label, onChange, value, text, SelectedVal, name, fnValueChange } =
-    props;
-  let { options } = props;
-  options = [...[{ [text]: "Select", [value]: "0" }], ...options];
-  console.log(SelectedVal);
+  let {
+    label,
+    onChange,
+    value,
+    text,
+    SelectedVal,
+    name,
+    style = {},
+    validationRequired = true,
+    options = [],
+    SelectSytle = {},
+    isIncludeSelect = true,
+  } = props;
+
+  if (props.fromBorrEntityExists === "1") {
+    options = [
+      ...[{ [text]: "Create as New Borrower", [value]: "-1" }],
+      ...options,
+    ];
+  }
+  if (props.fromBorrEntityExists === "2") {
+    options = [
+      ...[{ [text]: "Create as New Entity", [value]: "-1" }],
+      ...options,
+    ];
+  }
+  if (isIncludeSelect) {
+    options = [...[{ [text]: "Select", [value]: "0" }], ...options];
+  }
+
   return (
     <>
-      <div className="form-group divInputWrapper">
+      <div className="form-group divInputWrapper" style={style}>
         <label>{label}</label>
         <select
-          defaultValue={SelectedVal || null}
+          value={SelectedVal || null}
           className={`form-control ${
-            parseInt(SelectedVal) === 0 ? "RedBorder" : null
+            parseInt(SelectedVal) === 0 && validationRequired
+              ? "RedBorder"
+              : null
           }`}
-          onChange={fnValueChange || null}
+          onChange={onChange || null}
           name={name}
+          style={SelectSytle}
         >
-          {options.map((item, index) => (
-            <option key={index} value={item[value]}>
-              {item[text]}
-            </option>
-          ))}
+          {options.map(
+            (item, index) =>
+              item[value] &&
+              item[text] && (
+                <option key={index} value={item[value]}>
+                  {item[text]}
+                </option>
+              )
+          )}
         </select>
       </div>
     </>
   );
 };
 
-export { handleAPI, FormatPhoneLogin, TextBox, DropDown };
+const InputBox = (props) => {
+  const { label, name, value, disabled = false, style = {}, onChange } = props;
+
+  return (
+    <>
+      <div className="form-group divInputWrapper" style={style}>
+        <label style={{ fontSize: "11px" }}>{label}</label>
+        <input
+          type="text"
+          class="form-control"
+          onChange={onChange || null}
+          name={name || null}
+          value={value || ""}
+          placeholder={label}
+          style={{ fontSize: "11px" }}
+          // style={{ width: "95%", display: "inline-block" }}
+        />
+      </div>
+    </>
+  );
+};
+
+export { handleAPI, FormatPhoneLogin, TextBox, DropDown, InputBox };

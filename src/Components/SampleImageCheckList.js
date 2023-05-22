@@ -2,7 +2,10 @@ import React, { useState, useEffect, useRef } from "react";
 import { makeStyles } from "@material-ui/core/styles";
 import { Tabs, TabList, Tab, TabPanel } from "react-tabs";
 import "react-tabs/style/react-tabs.css";
-import { Document, Page, pdfjs } from "react-pdf";
+// import { Document, Page, pdfjs } from "react-pdf";
+import { Document, Page } from "react-pdf/dist/esm/entry.webpack5";
+import "react-pdf/dist/esm/Page/AnnotationLayer.css";
+import "react-pdf/dist/esm/Page/TextLayer.css";
 import samplepdf from "../../src/SamplePdf.pdf";
 import "bootstrap/dist/css/bootstrap.css";
 import "../Components/ImageCheckList.css";
@@ -11,7 +14,17 @@ import DropZone from "./DropZone";
 import { paste } from "@testing-library/user-event/dist/paste";
 import { XMLParser } from "react-xml-parser";
 import { DirectionsBusFilled, Filter } from "@mui/icons-material";
-import { handleAPI, TextBox, DropDown } from "./CommonFunction";
+import { handleAPI, TextBox, DropDown, InputBox } from "./CommonFunction";
+import Modal from "../Components/Modal";
+import LeaderLine from "leader-line";
+import { pdfjs, Annotation } from "react-pdf";
+import ConditionalModal from "./ConditionModal";
+import ControlPanel from "./PdfViewerTools";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Switch from "@mui/material/Switch";
+import MenuOptions from "./MenuOption";
+
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 
 const useStyles = makeStyles((theme) => ({
   formContainer: {
@@ -35,7 +48,7 @@ const useStyles = makeStyles((theme) => ({
 function Form() {
   const classes = useStyles();
   const [numPages, setNumPages] = useState(null);
-  const [file, setFile] = useState("");
+  const [file, setFile] = useState(null);
   const [ResJSON, setResJSON] = useState([]);
   const [LoanId, setLoanId] = useState("");
   const [DocType, setDocType] = useState("");
@@ -47,53 +60,191 @@ function Form() {
   const [DocTypeValue, setDocTypeValue] = useState("0");
   const [SessionId, setSessionId] = useState("");
   const [EnableSave, setEnableSave] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [IsBorrExists, setIsBorrExists] = useState(1);
+  const [IsEntityExists, setIsEntityExists] = useState(1);
+  const [BorrLists, setBorrLists] = useState("");
+  const [EntityLists, setEntityLists] = useState("");
+  const [WhichBorrower, setWhichBorrower] = useState("0");
+  const [WhichEnity, setWhichEnity] = useState("0");
+  const [line, setLine] = useState(null);
+  const [uploadedDocument, setUploadedDocument] = useState([]);
+  const [UploadedDocValue, setUploadedDocValue] = useState("0");
 
-  pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.js`;
+  const [conditionDetails, setConditionDetails] = useState(null);
 
-  const canvas = useRef();
-  // let ctx = null;
+  const [conditionalModalOpen, setConditionalModalOpen] = useState(false);
+  const [isUploadDocChecked, setIsUploadDocChecked] = useState(false);
+  const [uploadedDocDetails, setUploadedDocDetails] = useState({
+    UploadedBy: "",
+  });
 
-  // initialize the canvas context
-  // useEffect(() => {
-  //   // dynamically assign the width and height to canvas
-  //   const canvasEle = canvas.current;
-  //   canvasEle.width = canvasEle.clientWidth;
-  //   canvasEle.height = canvasEle.clientHeight;
+  const [activeDropzone, setActiveDropzone] = useState({ Id: 0, DocTypeId: 0 });
+  const [checkIcon, setcheckIcon] = useState({
+    Entity: false,
+    Borrower: false,
+  });
 
-  //   // get context of the canvas
-  //   ctx = canvasEle.getContext("2d");
-  // }, []);
+  const [ShowError, setShowError] = useState("0");
 
-  function fndrawfield() {
-    drawLine(
-      { x: 101.2, y: 718.5150000000001, x1: 0, y1: 20 },
-      { color: "red" }
-    );
-  }
+  const [scale, setScale] = React.useState(1);
 
-  // draw a line
-  const drawLine = (info, style = {}) => {
-    const canvasEle = canvas.current;
-    canvasEle.width = canvasEle.clientWidth;
-    canvasEle.height = canvasEle.clientHeight;
+  const [showTools, setShowTools] = useState("0");
+  const [scandocId, setScandocId] = useState("");
 
-    // get context of the canvas
-    let ctx = canvasEle.getContext("2d");
-    const { x, y, x1, y1 } = info;
-    const { color = "black", width = 1 } = style;
+  const [category, setCategory] = useState("");
+  const [description, setDescription] = useState("");
+  const [entityTypeId, setEntityTypeId] = useState("");
 
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x1, y1);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = width;
-    ctx.stroke();
+  const [rotation, setrotation] = useState(0);
+
+  const [PdfElements, setPdfElements] = useState([]);
+
+  const [userId, setUserId] = useState(0);
+  const [userType, setUserType] = useState("");
+
+  const options = {
+    cMapUrl: "cmaps/",
+    standardFontDataUrl: "standard_fonts/",
+  };
+
+  const handleFindFormToElements = (e, isDraw, value) => {
+    if (value === "" || value === undefined) return false;
+    console.log("handleFindFormToElements");
+    let eleFrom = e.target,
+      eleTo = PdfElements.filter(
+        (ele) =>
+          ele.textContent.toLowerCase() ===
+          value.replaceAll("$", "").toLowerCase()
+      );
+    if (eleTo.length == 0) {
+      debugger;
+      let PdfEle = Array.from(document.querySelectorAll(".textLayer span"));
+      // let PdfEle = Array.from(document.querySelectorAll("span"));
+      eleTo = PdfEle.filter(
+        (ele) =>
+          ele.textContent.toString().replaceAll("$", "").toLowerCase() ===
+          value.replaceAll("$", "").toLowerCase()
+      );
+
+      if (eleTo.length == 0) {
+        eleTo = PdfEle.filter(
+          (ele) =>
+            ele.textContent.toString().replaceAll("$", "").toLowerCase() ===
+            value
+              .toString()
+              .split(" ")
+              [value.toString().split(" ").length - 1].replaceAll("$", "")
+              .toLowerCase()
+        );
+      }
+
+      setPdfElements([...PdfElements, ...eleTo]);
+    }
+    if (eleFrom !== null && eleTo !== null) {
+      if (isDraw) handleDrawLine(eleFrom, eleTo, isDraw);
+    }
+  };
+
+  const handleDrawLine = (eleFrom, eleTo, isDraw) => {
+    try {
+      if (eleFrom && eleTo) {
+        let ele = eleTo[0];
+        handleRemoveLine();
+        if (document.querySelectorAll(".txtHighlight")?.length > 0) {
+          document
+            ?.querySelector(".txtHighlight")
+            ?.classList.remove("txtHighlight");
+        }
+        if (ele.classList !== undefined) ele.classList.add("txtHighlight");
+        try {
+          var line_ = new LeaderLine(eleFrom, ele, {
+            color: "blue",
+            size: 2.5,
+            path: "fluid",
+            // startPlug: "disc",
+          });
+        } catch (error) {
+          console.log(error);
+        }
+
+        // document
+        //   .querySelector("#divImageColumn")
+        //   ?.removeEventListener("scroll", () => {
+        //     try {
+        //       line_.position();
+        //     } catch (error) {
+        //       console.log("removeEventListener");
+        //     }
+        //   });
+
+        // document
+        //   .querySelector("#divImageColumn")
+        //   ?.addEventListener("scroll", () => {
+        //     try {
+        //       line_.position();
+        //     } catch (error) {
+        //       console.log("addEventListener");
+        //     }
+        //   });
+        // // debugger;
+        // document
+        //   .querySelector("#divfieldsColumn .react-tabs__tab-panel")
+        //   ?.removeEventListener("scroll", () => {
+        //     try {
+        //       line_.position();
+        //     } catch (error) {
+        //       console.log("removeEventListener");
+        //     }
+        //   });
+
+        // document
+        //   .querySelector("#divfieldsColumn .react-tabs__tab-panel")
+        //   ?.addEventListener("scroll", () => {
+        //     try {
+        //       line_.position();
+        //     } catch (error) {
+        //       console.log("addEventListener");
+        //     }
+        //   });
+        setLine(line_);
+      }
+    } catch (error) {
+      console.log("LeaderLine", error);
+    }
+  };
+  const handleRemoveLine = () => {
+    try {
+      if (line) {
+        console.log("handleRemoveLine");
+        line.remove();
+        setLine(null);
+      }
+    } catch (error) {
+      console.log("Error handleRemoveLine");
+    }
   };
 
   const fnValueChange = (e) => {
+    debugger;
     let { name, value } = e.target;
     setDetails({ ...Details, [name]: value });
+    setDocTypeValue(value);
     setEnableSave(true);
+    // setCategory(catType);
+    // setEntityTypeId(entityType);
+    setDescription(e.target.selectedOptions[0].text);
+  };
+
+  const fnBorrEntityValueChange = (e) => {
+    debugger;
+    let { name, value, flag } = e;
+    if (flag == 0) {
+      setWhichBorrower(value);
+    }
+    if (flag == 1) {
+      setWhichEnity(value);
+    }
   };
 
   const fntxtChange = (e) => {
@@ -109,32 +260,61 @@ function Form() {
   function onDocumentLoadSuccess({ numPages }) {
     setNumPages(numPages);
     setPageNumber(1);
+    setShowTools("1");
+    setTimeout(() => {
+      if (OriginalResJSON) {
+        let ParsedJson = JSON.parse(OriginalResJSON)["business_logic_json"];
+        fnGetLeaderLineSetup(ParsedJson);
+        handleSetValuetoDD(JSON.parse(OriginalResJSON)["doc_type"]);
+      }
+    }, 500);
+
+    // setTimeout(() => {
+    //   removeTextLayerOffset();
+    // }, 50);
   }
 
-  useEffect(() => {
-    console.log("LoanIddd", LoanId);
-    const queryString = window.location.search;
-    const searchParams = new URLSearchParams(queryString);
-    setLoanId(searchParams.get("LoanId"));
-    setSessionId(searchParams.get("SessionId"));
-
+  function fnPageload(iLoanId, iUserId, iUserType) {
     handleAPI({
       name: "GetUWStatusChecklistData",
       params: {
-        LoanId: searchParams.get("LoanId"),
+        LoanId: iLoanId,
         formparam: "",
         TypeId: 1,
-        UserType: "E",
+        UserType: iUserType,
         Id: 1,
-        EmpNum: 27013,
+        EmpNum: iUserId,
       },
     })
       .then((response) => {
         console.log(response);
         response = JSON.parse(response);
         console.log(response);
-        //debugger;
-        setDocDetails(JSON.parse(response["Table"][0].Column1)[0] || []);
+        // debugger;
+        let docDec = JSON.parse(response["Table"][0].Column1)[0] || [];
+        if (response["Table"][0].Column2 === "")
+          response["Table"][0].Column2 = "[]";
+        let UploadedDocFiles = JSON.parse(response["Table"][0].Column2) || [],
+          totalArr = JSON.parse(response["Table1"][0].Result) || [],
+          resultArr = totalArr.filter(
+            (obj1) =>
+              !UploadedDocFiles.some(
+                (obj2) => obj2.ScanDocId === obj1.ScanDocId
+              )
+          );
+
+        resultArr.forEach((e) => {
+          let docType = e.SDT[0];
+          delete e.SDT;
+          e["ShortName"] = docType["ShortName"];
+        });
+
+        docDec = [...docDec, ...resultArr];
+        UploadedDocFiles = [...UploadedDocFiles, ...resultArr];
+        setDocDetails(docDec);
+
+        setUploadedDocument(UploadedDocFiles);
+        setUploadedDocValue(UploadedDocFiles[0]["ScanDocId"]);
       })
       .catch((error) => {
         //debugger;
@@ -143,7 +323,7 @@ function Form() {
 
     handleAPI({
       name: "GetDocumentType",
-      params: { LoanId: searchParams.get("LoanId") },
+      params: { LoanId: iLoanId },
     })
       .then((response) => {
         console.log(response);
@@ -155,7 +335,67 @@ function Form() {
         //debugger;
         console.log("error", error);
       });
+  }
+  useEffect(() => {
+    console.log("LoanIddd", LoanId);
+    const queryString = window.location.search;
+    const searchParams = new URLSearchParams(queryString);
+    setLoanId(searchParams.get("LoanId"));
+    setSessionId(searchParams.get("SessionId"));
+
+    // debugger;
+
+    handleAPI({
+      name: "GetUsersDetails",
+      params: { SessionId: searchParams.get("SessionId") },
+    })
+      .then((response) => {
+        // console.clear();
+        console.log(response);
+        let UserId = response.split("~")[0];
+        let UserType = response.split("~")[2];
+
+        if (UserId == 0) {
+          window.location.href =
+            "https://directcorp.com/Login/Presentation/Webforms/LoginInline.aspx";
+          return;
+        }
+
+        setUserId(UserId);
+        setUserType(UserType);
+        fnPageload(searchParams.get("LoanId"), UserId, UserType);
+      })
+      .catch((error) => {
+        //debugger;
+        console.log("error", error);
+      });
   }, [LoanId]);
+
+  function fnGetImagefromServer(ScandocId) {
+    handleAPI({
+      name: "GetUploadedImageWithJSON",
+      params: { ScandocId: ScandocId, ViewType: 0, SessionId: setSessionId },
+    })
+      .then((response) => {
+        // console.clear();
+        // console.log(response);
+        let PdfPath = `https://www.directcorp.com/PDF/${
+          response.split("~")[0]
+        }`;
+        let Json = response.split("~")[1];
+        setFile(PdfPath);
+        setOriginalResJSON(Json);
+
+        // fnGetLeaderLineSetup(ParsedJson);
+        console.log(PdfPath);
+        console.log(Json);
+      })
+      .catch((error) => {
+        //debugger;
+        console.log("error", error);
+      });
+  }
+
   const handleSetValuetoDD = (docType) => {
     if (docType !== undefined && DocType !== "") {
       let Filterdoctype = DocType.filter((items) => {
@@ -166,41 +406,118 @@ function Form() {
       });
       if (Filterdoctype.length > 0) {
         setDocTypeValue(Filterdoctype[0].Id);
+        // debugger;
+        setCategory(Filterdoctype[0].CategoryType);
+        setEntityTypeId(Filterdoctype[0].iEntityType);
+        setDescription(Filterdoctype[0].DocType);
       }
     }
   };
 
-  // useEffect(() => {
-  //   if (ResJSON.length > 0 && DocType !== "") {
-  //     debugger;
-  //     let docType = ResJSON["doc_type"];
-  //     let Filterdoctype = DocType.filter((items) => {
-  //       return (
-  //         items.DocType.replaceAll(" ", "").toLowerCase() ===
-  //         docType.toLowerCase()
-  //       );
-  //     });
-  //     if (Filterdoctype.length > 0) {
-  //       setDocTypeValue(Filterdoctype[0].Id);
-  //       console.log("===> ", Filterdoctype[0].Id);
-  //     }
-  //   }
-  // }, [ResJSON]);
+  function fnGetLeaderLineSetup(obj) {
+    debugger;
+    setResJSON(obj);
+    if (obj) {
+      let ele = [],
+        PdfEle = Array.from(document.querySelectorAll(".textLayer span")),
+        KeyValues = Object.values(obj).map((val) =>
+          val.toString().replaceAll("$", "").toLowerCase()
+        );
+
+      ele = PdfEle.filter(
+        (ele) =>
+          KeyValues.toString()
+            .toLowerCase()
+            .indexOf(
+              ele.textContent.toString().replaceAll("$", "").toLowerCase()
+            ) !== -1
+      );
+
+      // if (ele.length !== Object.values(obj).length) {
+      //   debugger;
+      //   ele = PdfEle.filter(
+      //     (ele) => KeyValues.indexOf(ele.textContent.toLowerCase()) !== -1
+      //   );
+      // }
+
+      setPdfElements(ele);
+    }
+  }
+
   function fnSaveFieldsToDW() {
-    let docType = DocType.filter(
-        (items) =>
-          parseInt(items.Id) === parseInt(Details["DocType"] || DocTypeValue)
-      ),
-      originalData = {
-        task_id: JSON.parse(OriginalResJSON)["task_id"],
-        doc_type: docType[0].DocType,
-        ...ResJSON,
-      };
+    setShowError("0");
+    if (!fnValidationCheckbeforeSave()) {
+      setShowError("1");
+    } else {
+      setModalOpen(false);
+
+      let docType = DocType.filter(
+          (items) =>
+            parseInt(items.Id) === parseInt(Details["DocType"] || DocTypeValue)
+        ),
+        originalData = {
+          task_id: JSON.parse(OriginalResJSON)["task_id"],
+          doc_type: docType[0].DocType,
+          ...ResJSON,
+        };
+      let FilterJSON = {};
+      FilterJSON = JSON.stringify(originalData);
+
+      debugger;
+
+      handleAPI({
+        name: "UpdateResponseInDW",
+        params: {
+          LoanId: LoanId,
+          FilterJSON: FilterJSON,
+          IsBorExists: WhichBorrower != 0 && WhichBorrower != -1 ? 1 : 0,
+          IsEntityExists: WhichEnity != 0 && WhichEnity != -1 ? 1 : 0,
+          BorId: WhichBorrower != 0 && WhichBorrower != -1 ? WhichBorrower : 0,
+          EntityId: WhichEnity != 0 && WhichEnity != -1 ? WhichEnity : 0,
+          ScandocId: scandocId,
+          docTypeId: DocTypeValue,
+          Descript: description,
+          Category: category,
+          UseDoc: uploadedDocDetails.UseDoc,
+        },
+      })
+        .then((response) => {
+          console.log(response);
+          handleFooterMsg("Saved Successfully.");
+          fnSendFeedbacktoAPI();
+          setWhichBorrower(0);
+          setWhichEnity(0);
+          // response = JSON.parse(response);
+          // console.log(response);
+        })
+        .catch((error) => {
+          //debugger;
+          console.log("error", error);
+        });
+    }
+  }
+
+  function fnValidationCheckbeforeSave() {
+    let IsValidated = true;
+
+    if (
+      IsBorrExists == 0 &&
+      WhichBorrower == 0 &&
+      checkIcon["Borrower"] == false
+    )
+      IsValidated = false;
+    if (IsEntityExists == 0 && WhichEnity == 0 && checkIcon["Entity"] == false)
+      IsValidated = false;
+
+    return IsValidated;
+  }
+
+  function fnCheckBorrEntityExistsValidation() {
     let FilterJSON = {};
-    FilterJSON = JSON.stringify(originalData);
+    FilterJSON = JSON.stringify(ResJSON);
 
     handleAPI({
-      name: "UpdateResponseInDW",
+      name: "EntityBorrCheckValidation",
       params: {
         LoanId: LoanId,
         FilterJSON: FilterJSON,
@@ -208,14 +525,72 @@ function Form() {
     })
       .then((response) => {
         console.log(response);
-        response = JSON.parse(response);
-        console.log(response);
+        let SplitRes = response.split("~");
+        let BorrExists = SplitRes[0];
+        let EntityExists = SplitRes[1];
+        let BorrLists = SplitRes[2];
+        let EntityLists = SplitRes[3];
+
+        if (BorrExists == 1 && EntityExists == 1) {
+          fnSaveFieldsToDW();
+        } else {
+          setIsBorrExists(BorrExists);
+          setIsEntityExists(EntityExists);
+          setBorrLists(BorrLists);
+          setEntityLists(EntityLists);
+          setModalOpen(true);
+        }
+        setEnableSave(false);
+        // setModalOpen(true);
       })
       .catch((error) => {
         //debugger;
         console.log("error", error);
       });
   }
+  function handleActivedropzone(activeDropzone) {
+    setActiveDropzone(activeDropzone);
+    debugger;
+    let activeScandocId = uploadedDocument.filter(
+      (item) =>
+        item.ID === activeDropzone.Id &&
+        item.DocTypeId === activeDropzone.DocTypeId
+    );
+    // debugger;
+    if (activeScandocId.length > 0) {
+      activeScandocId = activeScandocId[0].ScanDocId || 0;
+      if (activeScandocId !== 0) handleDocumentUploadChange(activeScandocId);
+      setShowTools(1);
+    } else {
+      setFile(null);
+      setShowTools(0);
+    }
+  }
+  // useEffect(() => {
+  //   // console.log("UploadedDocValue", UploadedDocValue);
+  //   if (UploadedDocValue !== 0) handleDocumentUploadChange(UploadedDocValue);
+  // }, [activeDropzone]);
+
+  const handleDocumentUploadChange = (value) => {
+    if (value === undefined) value = UploadedDocValue;
+    setUploadedDocValue(value);
+    fnGetImagefromServer(value);
+    let isChecked = "0",
+      checkedIndex = uploadedDocument.filter(
+        (e) => Number(e["ScanDocId"]) === Number(value)
+      );
+    if (checkedIndex && Number(value) !== 0) {
+      checkedIndex = checkedIndex[0];
+      if (
+        Number(checkedIndex["UseDoc"]) === 2 ||
+        Number(checkedIndex["UseDoc"]) === 3
+      ) {
+        isChecked = "1";
+      }
+    }
+    // setIsUploadDocChecked(isChecked);
+    setUploadedDocDetails(checkedIndex);
+  };
 
   function fnSendFeedbacktoAPI() {
     var myHeaders = new Headers();
@@ -254,7 +629,8 @@ function Form() {
     };
 
     fetch(
-      "https://www.solutioncenter.biz/LoginCredentialsAPI/api/SendFeedbacktoAPI",
+      "https://www.solutioncenter.biz/LoginCredentialsAPI/api/SendFeedbacktoAPI?LoanId=" +
+        LoanId,
       requestOptions
     )
       .then((response) => response.json())
@@ -271,6 +647,10 @@ function Form() {
     setTimeout(() => {
       document.getElementById("divsuccess").style.display = "none";
     }, 4000);
+  };
+
+  const isUploadedDocChecked = () => {
+    return { checked: !false };
   };
   //DOM Section
   return (
@@ -319,7 +699,7 @@ function Form() {
       >
         <div
           className="col-xs-12 col-sm-12 col-md-3 col-lg-3 ContainerBorder"
-          style={{ padding: " 10px 4px" }}
+          style={{ padding: " 10px 4px", zIndex: 999 }}
         >
           {
             /* Form fields for column 1 */
@@ -334,7 +714,7 @@ function Form() {
                     typeId="1"
                     label="Upload any document and we'll recognize it for you."
                     handleSetFile={handleSetFile}
-                    setResJSON={setResJSON}
+                    fnGetLeaderLineSetup={fnGetLeaderLineSetup}
                     setOriginalResJSON={setOriginalResJSON}
                     LoanId={LoanId || 0}
                     SessionId={SessionId || ""}
@@ -348,7 +728,10 @@ function Form() {
                     }}
                     setEnableSave={setEnableSave}
                     handleSetValuetoDD={handleSetValuetoDD}
-                    fndrawfield={fndrawfield}
+                    setConditionalModalOpen={setConditionalModalOpen}
+                    setScandocId={setScandocId}
+                    handleActivedropzone={handleActivedropzone}
+                    activeDropzone={activeDropzone}
                   />
                   <div style={{ maxHeight: "68vh", overflowY: "auto" }}>
                     {DocDetails.filter(
@@ -364,7 +747,7 @@ function Form() {
                           typeId={item["DocTypeId"]}
                           label={item["ShortName"]}
                           handleSetFile={handleSetFile}
-                          setResJSON={setResJSON}
+                          fnGetLeaderLineSetup={fnGetLeaderLineSetup}
                           {...item}
                           key={index}
                           setOriginalResJSON={setOriginalResJSON}
@@ -372,7 +755,11 @@ function Form() {
                           SessionId={SessionId || ""}
                           handleSetValuetoDD={handleSetValuetoDD}
                           setEnableSave={setEnableSave}
-                          fndrawfield={fndrawfield}
+                          setConditionalModalOpen={setConditionalModalOpen}
+                          setConditionDetails={setConditionDetails}
+                          setScandocId={setScandocId}
+                          handleActivedropzone={handleActivedropzone}
+                          activeDropzone={activeDropzone}
                         />
                       );
                     })}
@@ -390,38 +777,164 @@ function Form() {
             </div>
           }
         </div>
-        <div className="col-xs-12 col-sm-12 col-md-6 col-lg-6 ContainerBorder">
+        <div
+          className="col-xs-12 col-sm-12 col-md-6 col-lg-6 ContainerBorder"
+          style={{ overflow: "auto" }}
+          id="divImageColumn"
+        >
           {
             /* Form fields for column 2 */
             <>
-              <h2>Image Column</h2>
-              <div>
-                <canvas
-                  ref={canvas}
-                  style={{
-                    position: "absolute",
-                    zIndex: 999,
-                    width: 612,
-                    height: 792,
-                  }}
-                ></canvas>
+              {/* <h2>Image Column</h2> */}
+              {Number(showTools) !== 0 && (
+                <>
+                  <ControlPanel
+                    scale={scale}
+                    setScale={setScale}
+                    numPages={numPages}
+                    pageNumber={pageNumber}
+                    setPageNumber={setPageNumber}
+                    file={file}
+                    rotate={rotation}
+                    setrotation={setrotation}
+                  />
+                  <DropDown
+                    label="Document Uploaded"
+                    options={uploadedDocument
+                      .filter(
+                        (item) =>
+                          item.ID === activeDropzone.Id &&
+                          item.DocTypeId === activeDropzone.DocTypeId
+                      )
+                      .map((e) => {
+                        e["FileName"] = e["FileName"].split(".")[0];
+                        e["DateCreated_Merge"] = `${e["DateCreated"]}${
+                          e["UploadedBy"] ? " by " + e["UploadedBy"] : ""
+                        }`;
+                        return e;
+                      })}
+                    style={{ width: "160px", display: "inline-block" }}
+                    SelectSytle={{ padding: "0px", fontSize: "13px" }}
+                    value="ScanDocId"
+                    text="DateCreated_Merge"
+                    name="UploadedDoc"
+                    SelectedVal={UploadedDocValue}
+                    onChange={(e) => {
+                      let { value, name } = e.target;
+                      handleDocumentUploadChange(value);
+                    }}
+                  />
+                  {/* {uploadedDocDetails["UploadedBy"] !== "" && (
+                    <InputBox
+                      name="UploadedBy"
+                      label="Uploaded By"
+                      value={uploadedDocDetails["UploadedBy"] || ""}
+                      style={{
+                        width: "110px",
+                        display: "inline-block",
+                        marginLeft: "-1px",
+                      }}
+                      diabled={true}
+                    />
+                  )} */}
+                  <DropDown
+                    label="Use Document"
+                    options={[
+                      { value: "0", text: "No" },
+                      { value: "1", text: "Yes" },
+                    ]}
+                    style={{ width: "100px", display: "inline-block" }}
+                    SelectSytle={{ padding: "0px", fontSize: "12px" }}
+                    value="value"
+                    text="text"
+                    name="UploadedDoc"
+                    SelectedVal={
+                      Number(uploadedDocDetails["UseDoc"]) === 2 ||
+                      Number(uploadedDocDetails["UseDoc"]) === 3
+                        ? "1"
+                        : "0"
+                    }
+                    isIncludeSelect={false}
+                    validationRequired={false}
+                    onChange={(e) => {
+                      let { value, name } = e.target;
+                      // debugger;
+                      setEnableSave(true);
+                      setUploadedDocDetails({
+                        ...uploadedDocDetails,
+                        UseDoc: Number(value) === 1 ? 2 : 0,
+                      });
+                      // setUploadedDocValue(value);
+                      // let isChecked = "0",
+                      //   checkedIndex = uploadedDocument.filter(
+                      //     (e) => Number(e["ScanDocId"]) === Number(value)
+                      //   );
+                      // if (checkedIndex && Number(value) !== 0) {
+                      //   checkedIndex = checkedIndex[0];
+                      //   if (
+                      //     Number(checkedIndex["UseDoc"]) === 2 ||
+                      //     Number(checkedIndex["UseDoc"]) === 3
+                      //   ) {
+                      //     isChecked = "1";
+                      //   }
+                      // }
+                      // setIsUploadDocChecked(isChecked);
+                      // setUploadedDocDetails(checkedIndex);
+                    }}
+                  />
+                  {/* <div style={{ display: "inline-grid", position: "absolute" }}>
+                    <FormControlLabel
+                      style={{ marginLeft: 0 }}
+                      control={
+                        <>
+                          <span style={{ color: "#999" }}>Use Doc</span>
+                          <Switch
+                            checked={isUploadDocChecked}
+                            onChange={(event) => {
+                              setIsUploadDocChecked(event.target.checked);
+                            }}
+                          />
+                        </>
+                      }
+                    />
+                    {uploadedDocDetails && (
+                      <div>
+                        {uploadedDocDetails["UploadedBy"] && (
+                          <span>{uploadedDocDetails["UploadedBy"]}</span>
+                        )}
+                      </div>
+                    )}
+                  </div> */}
+                </>
+              )}
 
+              {file !== null ? (
                 <Document
                   file={file}
                   onLoadSuccess={onDocumentLoadSuccess}
-                  height="100%"
-                  width="100%"
+                  options={options}
                 >
-                  <Page pageNumber={pageNumber} size="A4" />
-                  <p>
-                    Page {pageNumber} of {numPages}
-                  </p>
+                  {/* <Page pageNumber={pageNumber} /> */}
+                  {Array.from(new Array(numPages), (el, index) => (
+                    <Page
+                      key={`page_${index + 1}`}
+                      pageNumber={index + 1}
+                      renderAnnotationLayer={false}
+                      scale={scale}
+                      rotate={rotation}
+                    ></Page>
+                  ))}
                 </Document>
-              </div>
+              ) : (
+                <div>No PDF file specified.</div>
+              )}
             </>
           }
         </div>
-        <div className="col-xs-12 col-sm-12 col-md-3 col-lg-3 ContainerBorder">
+        <div
+          className="col-xs-12 col-sm-12 col-md-3 col-lg-3 ContainerBorder"
+          id="divfieldsColumn"
+        >
           {
             /* Form fields for column 3 */
             <div>
@@ -430,7 +943,7 @@ function Form() {
                   <Tab>Fields</Tab>
                   <Tab>JSON</Tab>
                 </TabList>
-                <TabPanel>
+                <TabPanel style={{ overflow: "auto", height: "76vh" }}>
                   {Object.keys(ResJSON).length > 0 ? (
                     <>
                       <DropDown
@@ -440,55 +953,87 @@ function Form() {
                         text="DocType"
                         name="DocType"
                         SelectedVal={DocTypeValue}
-                        fnValueChange={fnValueChange}
+                        onChange={fnValueChange}
                       />
                       <TextBox
                         name="Name of Employer"
                         ResJSON={ResJSON}
                         onChange={fntxtChange}
                         label="Employer Name"
+                        onMouseHover={(e, value) => {
+                          handleFindFormToElements(e, true, value);
+                        }}
+                        onMouseLeave={handleRemoveLine}
                       />
                       <TextBox
                         name="Which Borrower"
                         ResJSON={ResJSON}
                         onChange={fntxtChange}
                         label="Which Borrower"
+                        onMouseHover={(e, value) => {
+                          handleFindFormToElements(e, true, value);
+                        }}
+                        onMouseLeave={handleRemoveLine}
                       />
                       <TextBox
                         name="Paid From Date"
                         ResJSON={ResJSON}
                         onChange={fntxtChange}
                         label="Paystub. Paid From Date"
+                        onMouseHover={(e, value) => {
+                          handleFindFormToElements(e, true, value);
+                        }}
+                        onMouseLeave={handleRemoveLine}
                       />
                       <TextBox
                         name="Paid To Date"
                         ResJSON={ResJSON}
                         onChange={fntxtChange}
                         label="Paystub. Paid To Date"
+                        onMouseHover={(e, value) => {
+                          handleFindFormToElements(e, true, value);
+                        }}
+                        onMouseLeave={handleRemoveLine}
                       />
                       <TextBox
                         name="Pay Frequency"
                         ResJSON={ResJSON}
                         onChange={fntxtChange}
                         label="Paystub. Pay frequency"
+                        onMouseHover={(e, value) => {
+                          handleFindFormToElements(e, true, value);
+                        }}
+                        onMouseLeave={handleRemoveLine}
                       />
                       <TextBox
                         name="Gross Pay"
                         ResJSON={ResJSON}
                         onChange={fntxtChange}
                         label="Paystub. Gross Pay"
+                        onMouseHover={(e, value) => {
+                          handleFindFormToElements(e, true, value);
+                        }}
+                        onMouseLeave={handleRemoveLine}
                       />
                       <TextBox
                         name="YTD Earnings"
                         ResJSON={ResJSON}
                         onChange={fntxtChange}
                         label="Paystub. YTD Earnings on paystub"
+                        onMouseHover={(e, value) => {
+                          handleFindFormToElements(e, true, value);
+                        }}
+                        onMouseLeave={handleRemoveLine}
                       />
                       <TextBox
                         name="Hours Worked Per Week"
                         ResJSON={ResJSON}
                         onChange={fntxtChange}
                         label="Hours Worked Per Week"
+                        onMouseHover={(e, value) => {
+                          handleFindFormToElements(e, true, value);
+                        }}
+                        onMouseLeave={handleRemoveLine}
                       />
                     </>
                   ) : (
@@ -509,6 +1054,7 @@ function Form() {
           }
         </div>
       </div>
+
       <div
         className="navbar navbar-default navbar-fixed-bottom"
         style={{ display: "unset" }}
@@ -529,7 +1075,25 @@ function Form() {
             style={{ paddingTop: "5px", paddingLeft: "6px" }}
           >
             <div className="btn-group dropup align-left">
-              <div id="btnMenu" className="btn-group">
+              <MenuOptions
+                title="Menu"
+                Options={[
+                  {
+                    title: "Feedback Change Log",
+                    click: () => {
+                      window.open("www.google.com", "mozillaWindow", "popup");
+                      console.log("FeedBack");
+                    },
+                  },
+                  {
+                    title: "Save Form Size and Position",
+                    click: () => {
+                      console.log("Save Form Size and Position");
+                    },
+                  },
+                ]}
+              ></MenuOptions>
+              {/* <div id="btnMenu" className="btn-group">
                 <button
                   type="button"
                   data-toggle="dropdown"
@@ -571,7 +1135,7 @@ function Form() {
                   <li className="divider" />
                   <li>
                     <a href="#" style={{ cursor: "default" }}>
-                      Copy text with proper sentence case &nbsp;
+                      Copy text with proper sentence case{" "}
                       <input
                         type="checkbox"
                         id="sentenceCaseCheck"
@@ -625,7 +1189,7 @@ function Form() {
                     </span>
                   </li>
                 </ul>
-              </div>
+              </div> */}
             </div>
           </div>
           <div className="field-set on-focus" style={{ display: "none" }}>
@@ -655,13 +1219,12 @@ function Form() {
               className={`btn ${EnableSave ? "btn-primary" : "btnDisable"}`}
               disabled={!EnableSave}
               onClick={() => {
-                fnSaveFieldsToDW();
-                fnSendFeedbacktoAPI();
-                handleFooterMsg("Saved Successfully.");
+                fnCheckBorrEntityExistsValidation();
               }}
             >
               Save
             </button>
+
             {"   "}
             <button
               type="button"
@@ -700,6 +1263,32 @@ function Form() {
           </span>
         </div>
       </div>
+      {modalOpen && (
+        <Modal
+          setOpenModal={setModalOpen}
+          IsBorrExists={IsBorrExists}
+          IsEntityExists={IsEntityExists}
+          BorrLists={BorrLists}
+          EntityLists={EntityLists}
+          fnSaveFieldsToDW={fnSaveFieldsToDW}
+          fnBorrEntityValueChange={fnBorrEntityValueChange}
+          setWhichBorrower={setWhichBorrower}
+          WhichBorrower={WhichBorrower}
+          setWhichEnity={setWhichEnity}
+          WhichEnity={WhichEnity}
+          checkIcon={checkIcon}
+          setcheckIcon={setcheckIcon}
+          ShowError={ShowError}
+          ResJSON={ResJSON}
+        />
+      )}
+      {conditionalModalOpen && (
+        <ConditionalModal
+          setConditionalModalOpen={setConditionalModalOpen}
+          conditionalModalOpen={conditionalModalOpen}
+          conditionDetails={conditionDetails}
+        ></ConditionalModal>
+      )}
     </>
   );
 }

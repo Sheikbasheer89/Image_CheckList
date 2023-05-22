@@ -1,0 +1,112 @@
+.modalBackground {
+  width: 100vw;
+  height: 100vh;
+  /* background-color: rgba(200, 200, 200); */
+  background-color: rgba(0, 0, 0, 0.4);
+  position: fixed;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modalContainer {
+  width: 35%;
+  height: auto;
+  border-radius: 12px;
+  background-color: white;
+  box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+  display: flex;
+  flex-direction: column;
+  padding: 25px;
+}
+
+.modalContainer .title {
+  display: inline-block;
+  text-align: center;
+  margin-top: 10px;
+}
+
+.titleCloseBtn {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.titleCloseBtn button {
+  background-color: transparent;
+  border: none;
+  font-size: 25px;
+  cursor: pointer;
+}
+
+.modalContainer .body {
+  flex: 50%;
+  /* display: flex; */
+  justify-content: center;
+  /* align-items: center; */
+  font-size: 1.7rem;
+  flex-direction: column;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.white {
+  background-color: #3984a9 !important;
+  border-radius: initial;
+  display: block;
+  color: white;
+  text-decoration: none;
+  font-size: 13px;
+  /* text-align: center; */
+  margin-bottom: 10px;
+  padding-left: 5px;
+}
+.white .MuiSvgIcon-colorError {
+  color: #f77 !important;
+}
+/* .modalContainer .footer {
+  flex: 20%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+} */
+
+/* .modalContainer .footer button {
+  width: 150px;
+  height: 45px;
+  margin: 10px;
+  border: none;
+  background-color: cornflowerblue;
+  color: white;
+  border-radius: 8px;
+  font-size: 20px;
+  cursor: pointer;
+} */
+
+#cancelBtn {
+  background-color: crimson;
+}
+
+.modal {
+  text-align: center;
+  padding: 0 !important;
+}
+
+.modal:before {
+  content: "";
+  display: inline-block;
+  vertical-align: middle;
+  margin: -2px;
+  height: 100%;
+}
+
+.modal-dialog {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.footer {
+  padding: 10px 15px;
+  margin-top: 15px;
+  /* text-align: right; */
+  border-top: 1px solid #e5e5e5;
+}
