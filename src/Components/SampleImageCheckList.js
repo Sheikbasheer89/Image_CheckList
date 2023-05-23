@@ -274,7 +274,7 @@ function Form() {
     // }, 50);
   }
 
-  function fnPageload(iLoanId, iUserId, iUserType) {
+  function fnPageload(iLoanId, iUserId, iUserType, flag) {
     handleAPI({
       name: "GetUWStatusChecklistData",
       params: {
@@ -314,7 +314,7 @@ function Form() {
         setDocDetails(docDec);
 
         setUploadedDocument(UploadedDocFiles);
-        setUploadedDocValue(UploadedDocFiles[0]["ScanDocId"]);
+        if (flag !== 1) setUploadedDocValue(UploadedDocFiles[0]["ScanDocId"]);
       })
       .catch((error) => {
         //debugger;
@@ -412,6 +412,7 @@ function Form() {
         setDescription(Filterdoctype[0].DocType);
       }
     }
+    fnPageload(LoanId, userId, userType, 1);
   };
 
   function fnGetLeaderLineSetup(obj) {
@@ -563,6 +564,7 @@ function Form() {
       setShowTools(1);
     } else {
       setFile(null);
+      setResJSON([]);
       setShowTools(0);
     }
   }
@@ -1081,7 +1083,7 @@ function Form() {
                   {
                     title: "Feedback Change Log",
                     click: () => {
-                      window.open("www.google.com", "mozillaWindow", "popup");
+                      // window.open("www.google.com", "mozillaWindow", "popup");
                       console.log("FeedBack");
                     },
                   },
