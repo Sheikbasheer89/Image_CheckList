@@ -45,7 +45,7 @@ function DropZone(props) {
           DocTypeId: props.DocTypeId,
           sessionid: SessionId,
           category: props.Category,
-          description: props.LongDesc || "" + " for Loan " + LoanId,
+          description: props.ShortName || "" + " for Loan " + LoanId,
           usedoc: 2,
           entityid: props.EntityId || 0,
           entitytypeid: props.EntityTypeId || 0,
@@ -81,7 +81,10 @@ function DropZone(props) {
             setOriginalResJSON(result);
             setExtractProgres(false);
             setEnableSave(true);
-            props.handleSetValuetoDD(JSON.parse(result)["doc_type"]);
+            props.handleSetValuetoDD(
+              JSON.parse(result)["doc_type"],
+              props.DocTypeId
+            );
             // fndrawfield();
           })
           .catch((error) => console.log("error", error));

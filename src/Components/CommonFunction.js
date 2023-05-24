@@ -1,4 +1,5 @@
 import FeedTwoToneIcon from "@mui/icons-material/FeedTwoTone";
+import { createContext } from "react";
 
 const handleAPI = async ({ name, params, method }) => {
   params = Object.keys(params)
@@ -188,4 +189,6 @@ const InputBox = (props) => {
   );
 };
 
-export { handleAPI, FormatPhoneLogin, TextBox, DropDown, InputBox };
+const Context = createContext();
+
+export { handleAPI, FormatPhoneLogin, TextBox, DropDown, InputBox, Context };

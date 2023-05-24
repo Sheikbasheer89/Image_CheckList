@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { makeStyles } from "@material-ui/core/styles";
 import { Tabs, TabList, Tab, TabPanel } from "react-tabs";
 import "react-tabs/style/react-tabs.css";
@@ -6,23 +6,19 @@ import "react-tabs/style/react-tabs.css";
 import { Document, Page } from "react-pdf/dist/esm/entry.webpack5";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
-import samplepdf from "../../src/SamplePdf.pdf";
 import "bootstrap/dist/css/bootstrap.css";
 import "../Components/ImageCheckList.css";
 import "../Components/BoostrapOld.css";
 import DropZone from "./DropZone";
-import { paste } from "@testing-library/user-event/dist/paste";
-import { XMLParser } from "react-xml-parser";
-import { DirectionsBusFilled, Filter } from "@mui/icons-material";
-import { handleAPI, TextBox, DropDown, InputBox } from "./CommonFunction";
+import { handleAPI, TextBox, DropDown, Context } from "./CommonFunction";
 import Modal from "../Components/Modal";
 import LeaderLine from "leader-line";
-import { pdfjs, Annotation } from "react-pdf";
+import { pdfjs } from "react-pdf";
 import ConditionalModal from "./ConditionModal";
 import ControlPanel from "./PdfViewerTools";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import Switch from "@mui/material/Switch";
 import MenuOptions from "./MenuOption";
+import AgGrid from "./AgGrid";
+import CustomizedSnackbars from "./MessageComponents";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 
@@ -46,6 +42,7 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 function Form() {
+  const { contextDetails, setContextDetails } = useContext(Context);
   const classes = useStyles();
   const [numPages, setNumPages] = useState(null);
   const [file, setFile] = useState(null);
@@ -103,6 +100,10 @@ function Form() {
   const [userId, setUserId] = useState(0);
   const [userType, setUserType] = useState("");
 
+  const [openMsg, setOpenMsg] = useState(false);
+
+  const [DocCheck, setDocCheck] = useState("");
+
   const options = {
     cMapUrl: "cmaps/",
     standardFontDataUrl: "standard_fonts/",
@@ -115,7 +116,7 @@ function Form() {
       eleTo = PdfElements.filter(
         (ele) =>
           ele.textContent.toLowerCase() ===
-          value.replaceAll("$", "").toLowerCase()
+          value.toString().replaceAll("$", "").toLowerCase()
       );
     if (eleTo.length == 0) {
       debugger;
@@ -124,7 +125,7 @@ function Form() {
       eleTo = PdfEle.filter(
         (ele) =>
           ele.textContent.toString().replaceAll("$", "").toLowerCase() ===
-          value.replaceAll("$", "").toLowerCase()
+          value.toString().replaceAll("$", "").toLowerCase()
       );
 
       if (eleTo.length == 0) {
@@ -146,6 +147,19 @@ function Form() {
     }
   };
 
+  const openNewWindow = (event) => {
+    // event.preventDefault(); // Prevents the default form submission behavior
+
+    // Open a new window with the form URL
+    const formUrl =
+      "http://localhost:3000/agGrid.html?LoanId=462038&SessionId={7D1D6CC2-AC7A-4D00-9BF1-09B31BE3C84D}"; // Replace with your form URL
+    window.open(
+      "/agGrid",
+      "_blank",
+      "width=1200,height=1200,resizable=yes,scrollbars=yes"
+    );
+  };
+
   const handleDrawLine = (eleFrom, eleTo, isDraw) => {
     try {
       if (eleFrom && eleTo) {
@@ -164,6 +178,19 @@ function Form() {
             path: "fluid",
             // startPlug: "disc",
           });
+          // var line_ = new LeaderLine(
+          //   eleFrom,
+          //   LeaderLine.pointAnchor(ele, {
+          //     x: 379.6327973019661,
+          //     y: 688.0023458332364,
+          //   }),
+          //   {
+          //     color: "blue",
+          //     size: 2.5,
+          //     path: "fluid",
+          //     // startPlug: "disc",
+          //   }
+          // );
         } catch (error) {
           console.log(error);
         }
@@ -337,10 +364,15 @@ function Form() {
       });
   }
   useEffect(() => {
+    debugger;
     console.log("LoanIddd", LoanId);
     const queryString = window.location.search;
     const searchParams = new URLSearchParams(queryString);
     setLoanId(searchParams.get("LoanId"));
+    setContextDetails({
+      ...{},
+      ...{ loanId: searchParams.get("LoanId") },
+    });
     setSessionId(searchParams.get("SessionId"));
 
     // debugger;
@@ -396,11 +428,11 @@ function Form() {
       });
   }
 
-  const handleSetValuetoDD = (docType) => {
+  const handleSetValuetoDD = (docType, OrgDocId) => {
     if (docType !== undefined && DocType !== "") {
       let Filterdoctype = DocType.filter((items) => {
         return (
-          items.DocType.replaceAll(" ", "").toLowerCase() ===
+          items.DocType.toString().replaceAll(" ", "").toLowerCase() ===
           docType.toLowerCase()
         );
       });
@@ -410,6 +442,13 @@ function Form() {
         setCategory(Filterdoctype[0].CategoryType);
         setEntityTypeId(Filterdoctype[0].iEntityType);
         setDescription(Filterdoctype[0].DocType);
+        if (OrgDocId && Filterdoctype[0].Id !== OrgDocId) {
+          setOpenMsg(true);
+          setDocCheck(Filterdoctype[0].DocType);
+          // setActiveDropzone.Id(-99);
+          // setActiveDropzone.DocTypeId(Filterdoctype[0].Id);
+          // handleActivedropzone();
+        }
       }
     }
     fnPageload(LoanId, userId, userType, 1);
@@ -724,6 +763,7 @@ function Form() {
                       DocTypeId: "269",
                       Category: "3",
                       LongDesc: "Miscellaneous",
+                      ShortName: "Miscellaneous",
                       ID: "-99",
                       EntityId: "0",
                       EntityTypeId: "1",
@@ -1082,8 +1122,14 @@ function Form() {
                 Options={[
                   {
                     title: "Feedback Change Log",
-                    click: () => {
+                    click: (e) => {
                       // window.open("www.google.com", "mozillaWindow", "popup");
+                      // window.open(
+                      //   <AgGrid />,
+                      //   "",
+                      //   "width=1200,height=1200,resizable=yes,scrollbars=yes"
+                      // );
+                      openNewWindow(e);
                       console.log("FeedBack");
                     },
                   },
@@ -1291,6 +1337,11 @@ function Form() {
           conditionDetails={conditionDetails}
         ></ConditionalModal>
       )}
+      <CustomizedSnackbars
+        DocCheck={DocCheck}
+        openMsg={openMsg}
+        setOpenMsg={setOpenMsg}
+      ></CustomizedSnackbars>
     </>
   );
 }
