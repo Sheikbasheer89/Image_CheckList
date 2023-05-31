@@ -1,7 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useContext, useEffect, Fragment } from "react";
 import "./ImageCheckList.css";
 import CircularProgress from "@mui/material/CircularProgress";
 import InfoIcon from "@mui/icons-material/Info";
+import { Context } from "./CommonFunction";
+import Stack from "@mui/material/Stack";
+import Button from "@mui/material/Button";
 
 function DropZone(props) {
   const {
@@ -19,10 +22,14 @@ function DropZone(props) {
     setScandocId,
     handleActivedropzone,
     activeDropzone,
+    setConditionalRemainingModel,
   } = props;
-  console.log(props);
+  // console.log(props);
   const [ExtractProgres, setExtractProgres] = useState(false);
-
+  const { contextDetails, setContextDetails } = useContext(Context);
+  // console.clear();
+  // console.log("=========================");
+  // console.log(contextDetails);
   const fileUpload = (event) => {
     const [file] = event.target.files;
     const fileInfo = event.target.files[0];
@@ -61,7 +68,7 @@ function DropZone(props) {
         params = Object.keys(params)
           .map((key) => `${key}=${params[key]}`)
           .join("&");
-        ////debugger;
+        ////
         fetch(
           "https://www.solutioncenter.biz/LoginCredentialsAPI/api/UploadFiles?" +
             params,
@@ -69,11 +76,10 @@ function DropZone(props) {
         )
           .then((response) => response.json())
           .then((result) => {
-            debugger;
-            console.log(result);
+            // console.log(result);
             // fnGetLeaderLineSetup(result);
             let getScandocId = result.split("~")[1];
-            console.log("ScandocId", getScandocId);
+            // console.log("ScandocId", getScandocId);
             setScandocId(getScandocId);
             result = result.split("~")[0];
             let ParsedJson = JSON.parse(result)["business_logic_json"];
@@ -88,38 +94,6 @@ function DropZone(props) {
             // fndrawfield();
           })
           .catch((error) => console.log("error", error));
-
-        // handleAPI({
-        //   name: "UploadFiles",
-        //   params: { file: "" },
-        // }).then((response) => {
-        //   console.log(response);
-
-        //   fnGetLeaderLineSetup(response);
-        //   setExtractProgres(false);
-        // });
-
-        // myHeaders.append(
-        //   "x-api-key",
-        //   "9cQKFT3dYKrOnF8CEDKO4DTaSKxrHUD4JK8f3tT3"
-        // );
-        // var formdata = new FormData();
-        // formdata.append("file", file, file.name);
-        // var requestOptions = {
-        //   method: "POST",
-        //   headers: myHeaders,
-        //   body: formdata,
-        //   redirect: "follow",
-        // };
-        // ////debugger;
-
-        // fetch(
-        //   "http://2y31yfw1hd.execute-api.us-east-1.amazonaws.com/prod/extract-paystub-pdf",
-        //   requestOptions
-        // )
-        //   .then((response) => response.text())
-        //   .then((result) => console.log(result))
-        //   .catch((error) => console.log("error", error));
       },
       false
     );
@@ -128,18 +102,32 @@ function DropZone(props) {
       event.target.value = null;
     }
   };
+  useEffect(() => {
+    if (
+      props.ID === activeDropzone.Id &&
+      props.DocTypeId === activeDropzone.DocTypeId
+    ) {
+      setTimeout(() => {
+        var myElement = document.querySelector(".activeDropZone");
+        var topPos = myElement.offsetTop - 150;
+        document.getElementById("divDropZoneWrapper").scrollTop = topPos;
+      }, 100);
+    }
+  }, [props]);
   return (
     <>
       <div
+        className={
+          props.ID === activeDropzone.Id &&
+          props.DocTypeId === activeDropzone.DocTypeId
+            ? `activeDropZone`
+            : ""
+        }
         style={{
           borderBottom: "1px solid #999",
-          backgroundColor:
-            props.ID === activeDropzone.Id &&
-            props.DocTypeId === activeDropzone.DocTypeId
-              ? "yellow"
-              : "",
         }}
         onClick={() => {
+          // return;
           handleActivedropzone({
             ...activeDropzone,
             ...{ Id: props.ID, DocTypeId: props.DocTypeId },
@@ -165,7 +153,7 @@ function DropZone(props) {
                 : "label-yellow"
             }`}
           >
-            <span className="drop-title">Click Here to Upload</span>
+            <span className="drop-title">Click to Upload</span>
             <input
               type="file"
               name="file"
@@ -179,26 +167,56 @@ function DropZone(props) {
           <span
             className="drop-content spndropzone"
             // onClick={(e) => {
-            //   debugger;
+            //
             //   e.target.style = "backgroundColor: yellow";
             // }}
           >
             {label || ""}
+
+            {typeId !== "1" && (
+              <Fragment>
+                <Stack spacing={2} direction="row">
+                  <Button
+                    size="small"
+                    variant="contained"
+                    color="primary"
+                    onClick={() => {
+                      setConditionalModalOpen(true);
+                      setConditionDetails(props);
+                    }}
+                    style={{ cursor: "pointer" }}
+                    className="btnRequirements"
+                  >
+                    Requirements
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    color="primary"
+                    onClick={() => {
+                      setConditionalRemainingModel(true);
+                    }}
+                    style={{ cursor: "pointer" }}
+                    className="btnCondRemaning"
+                  >
+                    Conditions Remaining
+                  </Button>
+                </Stack>
+              </Fragment>
+              // <span
+              //   onClick={() => {
+              //     setConditionalModalOpen(true);
+              //     setConditionDetails(props);
+              //   }}
+              //   style={{ cursor: "pointer" }}
+              // >
+              //   <InfoIcon
+              //     style={{ fontSize: 20, color: "#999", cursor: "pointer" }}
+              //   ></InfoIcon>
+              // </span>
+            )}
           </span>
           {/* </div> */}
-          {typeId !== "1" && (
-            <span
-              onClick={() => {
-                setConditionalModalOpen(true);
-                setConditionDetails(props);
-              }}
-              style={{ cursor: "pointer" }}
-            >
-              <InfoIcon
-                style={{ fontSize: 20, color: "#999", cursor: "pointer" }}
-              ></InfoIcon>
-            </span>
-          )}
         </div>{" "}
         {ExtractProgres && (
           <div>

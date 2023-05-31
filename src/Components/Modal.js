@@ -19,8 +19,6 @@ function Modal(props) {
     ShowError,
     ResJSON,
   } = props;
-  // debugger;
-  console.log(setOpenModal);
 
   return (
     <div className="modalBackground" style={{ zIndex: 9999 }}>
@@ -36,7 +34,7 @@ function Modal(props) {
         </div>
         <div className="title"></div> */}
         <div className="body">
-          {IsBorrExists == 0 && (
+          {Number(IsBorrExists) === 0 && (
             <span>
               <strong>
                 {ResJSON["Which Borrower"]} is not recognized. Would you like to
@@ -90,7 +88,7 @@ function Modal(props) {
               </div>
             </span>
           )}
-          {IsEntityExists == 0 && (
+          {Number(IsEntityExists) === 0 && (
             <span>
               <strong>
                 {ResJSON["Name of Employer"]} is not recognized. Would you like

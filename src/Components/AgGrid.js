@@ -19,10 +19,7 @@ import "../Components/agGridBlue.css";
 // ]);
 
 const AgGrid = (props) => {
-  const { contextDetails, setContextDetails } = useContext(Context);
-  console.clear();
-  console.log("=========================");
-  console.log(contextDetails);
+  console.log(props);
   //   let LoanId = props.LoanId;
   const [FeedBackDetails, setFeedBackDetails] = useState([]);
   const [rowData, setRowData] = useState([]);
@@ -43,9 +40,12 @@ const AgGrid = (props) => {
   };
 
   useEffect(() => {
+    const queryString = window.location.search;
+    const searchParams = new URLSearchParams(queryString);
+
     handleAPI({
       name: "GetFeedBackAPIChangeLog",
-      params: { LoanId: 462038 },
+      params: { LoanId: searchParams.get("LoanId") },
     })
       .then((response) => {
         debugger;
@@ -65,6 +65,7 @@ const AgGrid = (props) => {
               "Response Received": item.ResponseReceivedOn,
               "Response Json": JSON.parse(item.FeedbackResponse).message,
               "Requested Json": "",
+              RequestedData: JSON.parse(item.FeedbackRequest),
             });
           }
         );
@@ -79,15 +80,29 @@ const AgGrid = (props) => {
   const onGridReady = () => {
     setTimeout(() => {
       handleResize();
-    }, 100);
+    }, 500);
   };
   function MyRenderer(params) {
     return (
       <span className="my-renderer">
         <a
           href="#"
+          style={{ cursor: "pointer" }}
           onClick={() => {
+            debugger;
             console.log(params);
+
+            const element = document.createElement("a");
+            const file = new Blob(
+              [JSON.stringify(params.data.RequestedData, null, " ")],
+              {
+                type: "text/plain;charset=utf-8",
+              }
+            );
+            element.href = URL.createObjectURL(file);
+            element.download = `RequestJson_${params.data.RequestedData.task_id}.txt`;
+            document.body.appendChild(element);
+            element.click();
           }}
         >
           View
@@ -96,7 +111,7 @@ const AgGrid = (props) => {
       </span>
     );
   }
-  const [columnDefs] = useState([
+  const columnDefs = [
     { field: "Request Sent", autoSize: true, maxWidth: 150 },
     { field: "Response Received", autoSize: true, maxWidth: 150 },
     {
@@ -112,7 +127,7 @@ const AgGrid = (props) => {
         "wrap-text": () => true, // Apply wrap-text class to all cells in this column
       },
     },
-  ]);
+  ];
   const gridOptions = {
     domLayout: "autoHeight",
     suppressRowTransform: true,

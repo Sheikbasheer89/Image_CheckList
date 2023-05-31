@@ -12,7 +12,7 @@ function ConditionalModal(props) {
         <span style={{ fontSize: "16px", marginBottom: "10px" }}>
           <b>{conditionDetails.DocType}</b>
         </span>
-        <span class="white">
+        <span className="white">
           <CircleIcon color="error" /> Upload document that meets the following
           requirements:
         </span>

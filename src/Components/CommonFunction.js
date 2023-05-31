@@ -3,13 +3,11 @@ import { createContext } from "react";
 
 const handleAPI = async ({ name, params, method }) => {
   params = Object.keys(params)
-
     .map((key) => `${key}=${params[key]}`)
-
     .join("&");
-
+  let URL = `https://www.solutioncenter.biz/LoginCredentialsAPI/api/${name}?${params}`;
   return fetch(
-    `https://www.solutioncenter.biz/LoginCredentialsAPI/api/${name}?${params}`,
+    URL,
 
     {
       method: method || "POST",
@@ -85,7 +83,7 @@ const TextBox = (props) => {
         <label>{label}</label>
         <input
           type="text"
-          class="form-control"
+          className="form-control"
           onChange={onChange || null}
           name={name || null}
           value={ResJSON !== [] ? ResJSON[name] : ""}
@@ -176,7 +174,7 @@ const InputBox = (props) => {
         <label style={{ fontSize: "11px" }}>{label}</label>
         <input
           type="text"
-          class="form-control"
+          className="form-control"
           onChange={onChange || null}
           name={name || null}
           value={value || ""}
@@ -189,6 +187,52 @@ const InputBox = (props) => {
   );
 };
 
+const openNewWindow = (URL) => {
+  // if (!window.location.href.indexOf("localhost") === -1)
+  URL = `/imagechecklistreact${URL}`;
+  window.open(
+    URL,
+    "_blank",
+    "width=1200,height=1200,resizable=yes,scrollbars=yes"
+  );
+};
+
+const fnSaveWindowPosition = (
+  iSessionId,
+  iViewJson,
+  iUpdateFlag,
+  iFormID,
+  iFormName
+) => {
+  handleAPI({
+    name: "Get_UpdateLastView_ImageChecklist",
+    params: {
+      SessionId: iSessionId,
+      ViewJson: iViewJson,
+      UpdateFlag: iUpdateFlag,
+      FormID: iFormID,
+      FormName: iFormName,
+    },
+  })
+    .then((response) => {
+      console.log(response);
+      // response = JSON.parse(response);
+    })
+    .catch((error) => {
+      //debugger;
+      console.log("error", error);
+    });
+};
+
 const Context = createContext();
 
-export { handleAPI, FormatPhoneLogin, TextBox, DropDown, InputBox, Context };
+export {
+  handleAPI,
+  FormatPhoneLogin,
+  TextBox,
+  DropDown,
+  InputBox,
+  Context,
+  openNewWindow,
+  fnSaveWindowPosition,
+};

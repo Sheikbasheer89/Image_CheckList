@@ -385,3 +385,26 @@ input[type="file"] {
 .form-control {
   font-size: 10px !important;
 }
+
+.activeDropZone {
+  background-color: yellow;
+}
+
+.MuiButtonBase-root.MuiTab-root {
+  text-transform: none !important;
+  font-size: 15px !important  ;
+}
+.btnCondRemaning,
+.btnRequirements {
+  font-size: 9px !important;
+  padding: 4px !important;
+  margin-left: 4px !important;
+  text-transform: none !important;
+}
+
+.btnRequirements {
+  margin-left: 0px !important;
+}
+.MuiTabPanel-root {
+  font-size: 14px !important  ;
+}

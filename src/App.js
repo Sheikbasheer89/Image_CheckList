@@ -7,12 +7,24 @@ import { Context } from "./Components/CommonFunction";
 
 function App() {
   const [contextDetails, setContextDetails] = useState({});
+  let router = [
+    { path: "/imagechecklistreact/index.html", Element: <Form /> },
+    { path: "/imagechecklistreact/AgGrid", Element: <AgGrid /> },
+  ];
+
+  if (window.location.href.indexOf("localhost") > -1) {
+    router.forEach(
+      (item) => (item.path = item.path.replace("/imagechecklistreact", ""))
+    );
+  }
+
   return (
     <Context.Provider value={{ contextDetails, setContextDetails }}>
       <BrowserRouter>
         <Routes>
-          <Route path="/index.html" element={<Form />} />
-          <Route path="/AgGrid" element={<AgGrid />} />
+          {router.map((item, index) => (
+            <Route path={item.path} key={index} element={item.Element} />
+          ))}
         </Routes>
       </BrowserRouter>
     </Context.Provider>

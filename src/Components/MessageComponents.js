@@ -32,7 +32,7 @@ export default function CustomizedSnackbars(props) {
           severity="success"
           sx={{ width: "100%", fontSize: "13px" }}
         >
-          This document is recognized as {props.DocCheck} and it moved to{" "}
+          This document is recognized as {props.DocCheck} and was moved to{" "}
           {props.DocCheck} section!
         </Alert>
       </Snackbar>
