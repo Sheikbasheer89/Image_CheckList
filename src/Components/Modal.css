@@ -45,7 +45,7 @@
   /* align-items: center; */
   font-size: 1.7rem;
   flex-direction: column;
-  max-height: 50vh;
+  max-height: 60vh;
   overflow-y: auto;
 }
 

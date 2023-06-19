@@ -5,6 +5,7 @@ import InfoIcon from "@mui/icons-material/Info";
 import { Context } from "./CommonFunction";
 import Stack from "@mui/material/Stack";
 import Button from "@mui/material/Button";
+import { handleAPI } from "./CommonFunction";
 
 function DropZone(props) {
   const {
@@ -22,7 +23,11 @@ function DropZone(props) {
     setScandocId,
     handleActivedropzone,
     activeDropzone,
-    setConditionalRemainingModel,
+    fnCheckConditionalRemainingModel,
+    setExtractResult,
+    setWhichProcessMsg,
+    setOpenMsg,
+    setDocCheck,
   } = props;
   // console.log(props);
   const [ExtractProgres, setExtractProgres] = useState(false);
@@ -37,6 +42,7 @@ function DropZone(props) {
     // fnGetLeaderLineSetup([]);
     setOriginalResJSON("");
     const reader = new FileReader();
+
     reader.addEventListener(
       "load",
       () => {
@@ -79,10 +85,24 @@ function DropZone(props) {
             // console.log(result);
             // fnGetLeaderLineSetup(result);
             let getScandocId = result.split("~")[1];
+            if (
+              getScandocId === undefined ||
+              result?.toString().indexOf("business_logic_json") === -1
+            ) {
+              setExtractProgres(false);
+              setExtractResult(result);
+              setOriginalResJSON("");
+
+              fnPdfclassification(file, getScandocId, requestOptions);
+              fnGetLeaderLineSetup({});
+              return;
+            }
             // console.log("ScandocId", getScandocId);
+            setExtractResult("");
             setScandocId(getScandocId);
             result = result.split("~")[0];
             let ParsedJson = JSON.parse(result)["business_logic_json"];
+            console.log(ParsedJson);
             fnGetLeaderLineSetup(ParsedJson);
             setOriginalResJSON(result);
             setExtractProgres(false);
@@ -102,15 +122,51 @@ function DropZone(props) {
       event.target.value = null;
     }
   };
+
+  function fnPdfclassification(file, iScandocId, irequestOptions) {
+    let params = {
+      ScanDocId: iScandocId,
+      LoanId: LoanId,
+      ViewType: 0,
+    };
+
+    params = Object.keys(params)
+      .map((key) => `${key}=${params[key]}`)
+      .join("&");
+    fetch(
+      "https://www.solutioncenter.biz/LoginCredentialsAPI/api/finddocClassification?" +
+        params,
+      irequestOptions
+    )
+      .then((response) => response.json())
+      .then((response) => {
+        console.log(response);
+        setWhichProcessMsg(0);
+        setDocCheck(JSON.parse(response).doc_type);
+        setOpenMsg(true);
+
+        props.handleSetValuetoDD(
+          JSON.parse(response)["doc_type"],
+          props.DocTypeId
+        );
+      })
+      .catch((error) => {
+        //debugger;
+        console.log("error", error);
+      });
+  }
+
   useEffect(() => {
     if (
       props.ID === activeDropzone.Id &&
       props.DocTypeId === activeDropzone.DocTypeId
     ) {
       setTimeout(() => {
-        var myElement = document.querySelector(".activeDropZone");
-        var topPos = myElement.offsetTop - 150;
-        document.getElementById("divDropZoneWrapper").scrollTop = topPos;
+        try {
+          var myElement = document.querySelector(".activeDropZone");
+          var topPos = myElement.offsetTop - 150;
+          document.getElementById("divDropZoneWrapper").scrollTop = topPos;
+        } catch (error) {}
       }, 100);
     }
   }, [props]);
@@ -120,18 +176,46 @@ function DropZone(props) {
         className={
           props.ID === activeDropzone.Id &&
           props.DocTypeId === activeDropzone.DocTypeId
-            ? `activeDropZone`
-            : ""
+            ? `activeDropZone divMaindropZone`
+            : "divMaindropZone"
         }
         style={{
           borderBottom: "1px solid #999",
         }}
-        onClick={() => {
+        onClick={(event) => {
           // return;
-          handleActivedropzone({
-            ...activeDropzone,
-            ...{ Id: props.ID, DocTypeId: props.DocTypeId },
-          });
+          debugger;
+          if (
+            event.target.classList.toString().indexOf("btnCondRemaning") !== -1
+          ) {
+            let button = document.querySelector(".btnCondRemaning");
+
+            // if (button) {
+            //   let parentDiv = button.closest(".divMaindropZone");
+            //   if (
+            //     parentDiv.classList.toString().indexOf("activeDropZone") === -1
+            //   ) {
+            //     handleActivedropzone({
+            //       ...activeDropzone,
+            //       ...{ Id: props.ID, DocTypeId: props.DocTypeId },
+            //     });
+            //   }
+            // }
+          }
+
+          if (
+            event.target.classList.toString().indexOf("btnRequirements") ===
+              -1 &&
+            event.target.classList.toString().indexOf("btnCondRemaning") ===
+              -1 &&
+            event.target.classList.toString().indexOf("drop-container") ===
+              -1 &&
+            event.target.classList.toString().indexOf("drop-title") === -1
+          )
+            handleActivedropzone({
+              ...activeDropzone,
+              ...{ Id: props.ID, DocTypeId: props.DocTypeId },
+            });
         }}
       >
         <div
@@ -176,32 +260,61 @@ function DropZone(props) {
             {typeId !== "1" && (
               <Fragment>
                 <Stack spacing={2} direction="row">
-                  <Button
+                  {/* <Button
                     size="small"
                     variant="contained"
-                    color="primary"
                     onClick={() => {
                       setConditionalModalOpen(true);
                       setConditionDetails(props);
                     }}
-                    style={{ cursor: "pointer" }}
+                    style={{
+                      cursor: "pointer",
+                    }}
                     className="btnRequirements"
                   >
                     Requirements
-                  </Button>
+                  </Button> */}
                   <Button
                     size="small"
                     variant="contained"
                     color="primary"
                     onClick={() => {
-                      setConditionalRemainingModel(true);
+                      fnCheckConditionalRemainingModel();
+                      setConditionDetails(props);
                     }}
-                    style={{ cursor: "pointer" }}
+                    style={{
+                      cursor: "pointer",
+                      // color: "#ffffff",
+                      // backgroundColor: "#f0ad4e",
+                    }}
                     className="btnCondRemaning"
                   >
-                    Conditions Remaining
+                    {props.PassedValidation === 1 ? (
+                      "Conditions Completed"
+                    ) : props.RemainingCount > 0 ? (
+                      <>
+                        <span
+                          id="spnRemainingCount"
+                          style={{ marginRight: "2px" }}
+                        ></span>
+                        <span> Conditions Remaining</span>
+                      </>
+                    ) : (
+                      "Conditions Remaining"
+                    )}
                   </Button>
                 </Stack>
+                {props.DocTypeId === 169 ? (
+                  <>
+                    <span id="spnMonthlyIncomeMain"></span>
+                    {/* <span
+                      id="spnMonthlyIncome"
+                      style={{ fontWeight: "bolder" }}
+                    ></span> */}
+                  </>
+                ) : (
+                  ""
+                )}
               </Fragment>
               // <span
               //   onClick={() => {

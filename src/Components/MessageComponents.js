@@ -32,8 +32,12 @@ export default function CustomizedSnackbars(props) {
           severity="success"
           sx={{ width: "100%", fontSize: "13px" }}
         >
-          This document is recognized as {props.DocCheck} and was moved to{" "}
-          {props.DocCheck} section!
+          {Number(props.WhichProcessMsg) === 1
+            ? `This image has been processed and is now moved to the Documents Uploaded tab.`
+            : `This document is recognized as ${
+                props.DocCheck
+              } and was moved to${" "}
+          ${props.DocCheck} section!`}
         </Alert>
       </Snackbar>
     </Stack>

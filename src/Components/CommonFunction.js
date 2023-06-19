@@ -1,5 +1,5 @@
 import FeedTwoToneIcon from "@mui/icons-material/FeedTwoTone";
-import { createContext } from "react";
+import { createContext, useState } from "react";
 
 const handleAPI = async ({ name, params, method }) => {
   params = Object.keys(params)
@@ -69,6 +69,12 @@ const TextBox = (props) => {
     name,
     onMouseHover = () => {},
     onMouseLeave,
+    setChangeLogModalOpen,
+    LoanId,
+    ScanDocId,
+    DbFieldId,
+    setChangeLogData,
+    GetAPIChangeLog,
   } = props;
 
   return (
@@ -96,6 +102,9 @@ const TextBox = (props) => {
               verticalAlign: "bottom",
               color: "#999",
               cursor: "pointer",
+            }}
+            onClick={() => {
+              GetAPIChangeLog(LoanId, DbFieldId, ScanDocId);
             }}
           ></FeedTwoToneIcon>
         </span>

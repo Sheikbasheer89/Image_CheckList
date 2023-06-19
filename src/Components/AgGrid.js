@@ -19,7 +19,7 @@ import "../Components/agGridBlue.css";
 // ]);
 
 const AgGrid = (props) => {
-  console.log(props);
+  // console.log(props);
   //   let LoanId = props.LoanId;
   const [FeedBackDetails, setFeedBackDetails] = useState([]);
   const [rowData, setRowData] = useState([]);
@@ -50,14 +50,14 @@ const AgGrid = (props) => {
       .then((response) => {
         debugger;
         // console.clear();
-        console.log(response);
+        //    console.log(response);
         setFeedBackDetails(
           JSON.parse(JSON.parse(response).Table[0]["Column1"])
         );
         let FeedBackRowData = [];
         JSON.parse(JSON.parse(response).Table[0]["Column1"]).map(
           (item, index) => {
-            console.log(item);
+            //    console.log(item);
             FeedBackRowData.push({
               Id: item.Id,
               key: index,
@@ -90,7 +90,7 @@ const AgGrid = (props) => {
           style={{ cursor: "pointer" }}
           onClick={() => {
             debugger;
-            console.log(params);
+            //  console.log(params);
 
             const element = document.createElement("a");
             const file = new Blob(
