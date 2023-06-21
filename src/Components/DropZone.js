@@ -94,7 +94,7 @@ function DropZone(props) {
               setOriginalResJSON("");
 
               fnPdfclassification(file, getScandocId, requestOptions);
-              fnGetLeaderLineSetup({});
+              fnGetLeaderLineSetup([]);
               return;
             }
             // console.log("ScandocId", getScandocId);

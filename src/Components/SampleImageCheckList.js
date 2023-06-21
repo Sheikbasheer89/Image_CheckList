@@ -1003,7 +1003,7 @@ function Form() {
           UploadedMonthlyIncome[0]?.RemainingCount;
     } else {
       setFile(null);
-      setResJSON({});
+      setResJSON([]);
       setShowTools(0);
       uploadedDocDetails["ScanDocId"] = "";
       uploadedDocDetails.PassedValidation = 0;
