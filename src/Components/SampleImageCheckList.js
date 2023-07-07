@@ -10,6 +10,8 @@ import "bootstrap/dist/css/bootstrap.css";
 import "../Components/ImageCheckList.css";
 import "../Components/BoostrapOld.css";
 import DropZone from "./DropZone";
+import MultipleSelectCheckmarks from "./MultipleSelect";
+import CircularProgress from "@mui/material/CircularProgress";
 import {
   handleAPI,
   TextBox,
@@ -17,6 +19,7 @@ import {
   Context,
   openNewWindow,
   fnSaveWindowPosition,
+  DynamicTextBox,
 } from "./CommonFunction";
 import Modal from "../Components/Modal";
 import LeaderLine from "leader-line";
@@ -80,6 +83,7 @@ function Form() {
   const [DocChangeFlag, setDocChangeFlag] = useState(false);
 
   const [ExtractResult, setExtractResult] = useState("");
+  const [FieldExtractProgres, setFieldExtractProgres] = useState(false);
 
   const [ConditionalRemainingModel, setConditionalRemainingModel] =
     useState(false);
@@ -128,6 +132,9 @@ function Form() {
   const [PassedDoc, setPassedDoc] = useState([]);
 
   const [WhichProcessMsg, setWhichProcessMsg] = useState(0);
+  const [AssetTypeOPtions, setAssetTypeOPtions] = useState([]);
+
+  const [AssetTypeOptionValue, setAssetTypeOptionValue] = React.useState([]);
 
   const options = {
     cMapUrl: "cmaps/",
@@ -137,9 +144,50 @@ function Form() {
   const [CondRemaining, setCondRemaining] = React.useState([]);
   const [ValidationMsg, setValidationMsg] = React.useState("");
   const [CondCompleted, setCondCompleted] = React.useState([]);
+  const [DocDbFields, setDocDbFields] = React.useState([]);
 
   function fnCheckConditionalRemainingModel() {
     setConditionalRemainingModel(true);
+  }
+
+  const handleMultiSelect = (val) => {
+    setAssetTypeOptionValue(val);
+    setEnableSave(true);
+    // console.log(val_);
+  };
+
+  function fnSaveOtherDBField() {
+    let val_ = AssetTypeOPtions.filter((item) => {
+      return AssetTypeOptionValue.indexOf(item["TypeDesc"]) !== -1;
+      // return val.indexOf(item["TypeDesc"]) !== -1;
+    });
+    val_ = val_.map((e) => e.TypeOption).join(",");
+
+    handleAPI({
+      name: "SaveDBFieldFromAPI",
+      params: {
+        LoanId: LoanId,
+        InputJSON: JSON.stringify(DocDbFields),
+        AssetTypeOptions: val_,
+        ScandocId: scandocId,
+        DocTypeId: DocTypeValue,
+      },
+    })
+      .then((response) => {
+        console.log(response);
+        handleFooterMsg("Saved Successfully.");
+        setEnableSave(false);
+        fnSendFeedbacktoAPI();
+
+        fnRunImageValidation(1);
+
+        // response = JSON.parse(response);
+        // console.log(response);
+      })
+      .catch((error) => {
+        //debugger;
+        console.log("error", error);
+      });
   }
 
   function fnRunImageValidation(flag) {
@@ -159,10 +207,12 @@ function Form() {
         debugger;
 
         let dataarray = response.split("~~~~");
+        let ResultJSON = JSON.parse(dataarray[1]).ValidationMessages;
+        let CompletedJSON = JSON.parse(dataarray[2]).CompletedMessages;
 
         if (flag === 1) {
           fnPageload(LoanId, userId, userType);
-          if (dataarray[0] == "1") {
+          if (ResultJSON.length === 0 && CompletedJSON.length !== 0) {
             setWhichProcessMsg(1);
             setOpenMsg(true);
           }
@@ -178,43 +228,44 @@ function Form() {
           setCondCompleted([]);
         }
 
-        if (dataarray[0] == "1") {
+        // if (dataarray[0] == "1") {
+        if (ResultJSON.length === 0) {
           validationmsg = "This Document Passes Validation";
           // console.log(uploadedDocDetails.PassedValidation);
           setUploadedDocDetails({ ...uploadedDocDetails, PassedValidation: 1 });
           setValidationMsg(validationmsg);
           setCondRemaining([]);
-          setCondCompleted([]);
-        } else if (dataarray[0] == "-1") {
+          setCondCompleted(CompletedJSON);
+        } else {
           validationmsg = "Document Refer Reasons";
           setValidationMsg(validationmsg);
-          let ResultJSON = JSON.parse(dataarray[1]).ValidationMessages;
-          let CompletedJSON = JSON.parse(dataarray[2]).CompletedMessages;
+          setUploadedDocDetails({ ...uploadedDocDetails, PassedValidation: 0 });
           // debugger;
           setCondRemaining(ResultJSON);
           setCondCompleted(CompletedJSON);
-        } else if (dataarray[0] == "-98") {
-          validationmsg =
-            "Image Data is not availabe for Validation, please update and run again.";
-
-          setValidationMsg(validationmsg);
-          setCondRemaining([]);
-          setCondCompleted([]);
-        } else if (dataarray[0] == "-90") {
-          validationmsg =
-            "Image Validation Failed. Please try again or contact support.";
-
-          setValidationMsg(validationmsg);
-          setCondRemaining([]);
-          setCondCompleted([]);
-        } else {
-          validationmsg =
-            "There Are No Validation Rules For This Document Type.";
-
-          setValidationMsg(validationmsg);
-          setCondRemaining([]);
-          setCondCompleted([]);
         }
+        // else if (dataarray[0] == "-98") {
+        //   validationmsg =
+        //     "Image Data is not availabe for Validation, please update and run again.";
+
+        //   setValidationMsg(validationmsg);
+        //   setCondRemaining([]);
+        //   setCondCompleted([]);
+        // } else if (dataarray[0] == "-90") {
+        //   validationmsg =
+        //     "Image Validation Failed. Please try again or contact support.";
+
+        //   setValidationMsg(validationmsg);
+        //   setCondRemaining([]);
+        //   setCondCompleted([]);
+        // } else {
+        //   validationmsg =
+        //     "There Are No Validation Rules For This Document Type.";
+
+        //   setValidationMsg(validationmsg);
+        //   setCondRemaining([]);
+        //   setCondCompleted([]);
+        // }
       })
       .catch((error) => {
         //debugger;
@@ -253,7 +304,7 @@ function Form() {
   }, [ConditionalRemainingModel]);
 
   const formatCurrency = (value, decPlaces) => {
-    let num = value,
+    let num = value.toString().replace("$", "").replace(",", ""),
       multiplier = Math.pow(10, decPlaces),
       rounder = 50 / multiplier + 0.00000000001,
       i = 0,
@@ -507,6 +558,7 @@ function Form() {
     // setCategory(catType);
     // setEntityTypeId(entityType);
     setDescription(e.target.selectedOptions[0].text);
+    if (value !== 169) fnGetDocTypeDBField(value);
   };
 
   const fnBorrEntityValueChange = (e) => {
@@ -595,10 +647,12 @@ function Form() {
         // console.log(response);
         response = JSON.parse(response);
         // console.log(response);
-        debugger;
+        // debugger;
         let docDec = JSON.parse(response["Table"][0].Column1)[0] || [];
         if (response["Table"][0].Column2 === "")
           response["Table"][0].Column2 = "[]";
+
+        setAssetTypeOPtions(JSON.parse(response.Table2[0].Result));
         let UploadedDocFiles = JSON.parse(response["Table"][0].Column2) || [],
           totalArr = JSON.parse(response["Table1"][0].Result) || [],
           resultArr = totalArr.filter(
@@ -731,7 +785,7 @@ function Form() {
   function fnGetImagefromServer(ScandocId) {
     handleAPI({
       name: "GetUploadedImageWithJSON",
-      params: { ScandocId: ScandocId, ViewType: 0, SessionId: setSessionId },
+      params: { ScandocId: ScandocId, ViewType: 0, SessionId: SessionId },
     })
       .then((response) => {
         let PdfPath = `https://www.directcorp.com/PDF/${
@@ -795,7 +849,7 @@ function Form() {
   };
 
   function fnGetLeaderLineSetup(obj) {
-    debugger;
+    // debugger;
 
     if (obj) {
       setResJSON(obj);
@@ -845,8 +899,6 @@ function Form() {
         };
       let FilterJSON = {};
       FilterJSON = JSON.stringify(originalData);
-
-      // debugger;
 
       handleAPI({
         name: "UpdateResponseInDW",
@@ -985,8 +1037,22 @@ function Form() {
 
       if (document.getElementById("spnMonthlyIncomeMain") != null) {
         document.getElementById("spnMonthlyIncomeMain").innerHTML =
-          UploadedMonthlyIncome[0]?.IncomeDetails;
+          UploadedMonthlyIncome[0]?.IncomeDetails || "";
       }
+
+      setTimeout(() => {
+        if (UploadedMonthlyIncome[0].Confident_Score !== undefined) {
+          if (UploadedMonthlyIncome[0].Confident_Score === 0)
+            UploadedMonthlyIncome[0].Confident_Score = "";
+          if (document.querySelector("#spnConfidenceScore") !== null)
+            document.querySelector("#spnConfidenceScore").innerHTML =
+              " " + UploadedMonthlyIncome[0].Confident_Score;
+        }
+      }, 100);
+
+      setDocTypeValue(activeDropzone.DocTypeId);
+      if (activeDropzone.DocTypeId !== 169)
+        fnGetDocTypeDBField(activeDropzone.DocTypeId, activeScandocId);
       // debugger;
       // let MonthlyIncomeDetails = `<b>Monthly Income Calculated:</b><br>${ResJSON["Name of Employer"]}   ${UploadedMonthlyIncome[0]?.MonthlyIncome} (${ResJSON["Which Borrower"]})<br><b>Total Monthly Income</b><br>${UploadedMonthlyIncome[0]?.MonthlyIncome}`;
 
@@ -1040,9 +1106,49 @@ function Form() {
         isChecked = "1";
       }
     }
+    if (checkedIndex.Confident_Score !== undefined) {
+      if (checkedIndex.Confident_Score === 0) checkedIndex.Confident_Score = "";
+      if (document.querySelector("#spnConfidenceScore") !== null)
+        document.querySelector("#spnConfidenceScore").innerHTML =
+          " " + checkedIndex.Confident_Score;
+    }
     // setIsUploadDocChecked(isChecked);
     setUploadedDocDetails(checkedIndex);
   };
+
+  function fnGetDocTypeDBField(value, iScanDocId) {
+    if (Number(value) !== Number(169)) setResJSON([]);
+
+    setDocDbFields([]);
+    handleAPI({
+      name: "GetDocTypeDbField",
+      params: {
+        DocTypeId: value,
+        LoanId: LoanId,
+        ScandocId: scandocId || iScanDocId,
+      },
+    })
+      .then((response) => {
+        console.log(response);
+        let DocDbFields_ =
+          JSON.parse(JSON.parse(response).Table[0].Column1) !== null
+            ? JSON.parse(JSON.parse(response).Table[0].Column1)
+            : [];
+        // setDocDbFields([...DocDbFields, ...DocDbFields_]);
+        setDocDbFields(DocDbFields_);
+        setAssetTypeOptionValue(
+          DocDbFields_.filter(
+            (item) => item.DisplayName === "Type of Account"
+          )[0].Value.split(", ")
+        );
+
+        // setModalOpen(true);
+      })
+      .catch((error) => {
+        //debugger;
+        console.log("error", error);
+      });
+  }
 
   function fnFrequencyValue(FreqValue) {
     if (!isNaN(FreqValue)) return FreqValue;
@@ -1059,7 +1165,38 @@ function Form() {
     return 0;
   }
 
-  function fnSendFeedbacktoAPI() {
+  function convertToFourDigitYear(dateStr) {
+    const datePat = /^(\d{1,2})(\/)(\d{1,2})(\/)(\d{2})$/;
+    const matchArray = dateStr.match(datePat);
+
+    if (matchArray === null) {
+      return dateStr; // Return the original string if it doesn't match the expected format
+    }
+
+    const month = matchArray[1];
+    const day = matchArray[3];
+    let year = matchArray[5];
+    const currentYear = new Date().getFullYear();
+    const currentCentury = Math.floor(currentYear / 100) * 100;
+
+    year = parseInt(year, 10);
+    year += year < currentYear % 100 ? currentCentury : currentCentury - 100;
+
+    return `${month}/${day}/${year}`;
+  }
+
+  async function convertUrlToFile(url, FileName) {
+    return fetch(url)
+      .then((response) => response.blob())
+      .then((blob) => {
+        // Create a new File object from the Blob
+        const file = new File([blob], FileName, { type: "application/pdf" });
+        return file;
+      });
+  }
+
+  async function fnSendFeedbacktoAPI() {
+    debugger;
     var myHeaders = new Headers();
     myHeaders.append("x-api-key", "9cQKFT3dYKrOnF8CEDKO4DTaSKxrHUD4JK8f3tT3");
     myHeaders.append("Content-Type", "application/json");
@@ -1067,14 +1204,42 @@ function Form() {
         (items) =>
           parseInt(items.Id) === parseInt(Details["DocType"] || DocTypeValue)
       ),
-      originalData = {
-        task_id: JSON.parse(OriginalResJSON)["task_id"],
-        doc_type: docType[0].DocType,
-        ...ResJSON,
-      };
-    // console.log("=====>", originalData);
+      originalData = {},
+      file_ = file,
+      fileName = "";
+
+    // if (typeof file === "string") {
+    //   fileName = file.split("PDF/")[1];
+    //   file_ = await convertUrlToFile(file, fileName)
+    //     .then((file) => {
+    //       // Use the file as needed
+    //       console.log(file);
+    //       return file;
+    //     })
+    //     .catch((error) => {
+    //       console.error("Error converting URL to file:", error);
+    //     });
+    // } else fileName = file.name || "";
+
+    originalData = {
+      doc_type: docType[0].DocType,
+      ...(docType[0].DocType === "Pay Stub"
+        ? ResJSON
+        : DocDbFields.reduce((result, item) => {
+            result[item.DisplayName] = item.Value;
+            return result;
+          }, {})),
+    };
+
+    // let formdata = new FormData();
+    // formdata.append("file", file);
+    // formdata.append("json_data", JSON.stringify(originalData));
+
+    console.log("file=====>", file);
+    console.log("=====>", JSON.stringify(originalData));
     // return;
-    let raw = {}; //JSON.stringify({
+
+    // let raw = {}; //JSON.stringify({
     //   task_id: "2023-04-26-07-37-42-dbe77e0b-0fe2-4a19-9317-12d23ba35d90",
     //   doc_type: "Paystub",
     //   "Name of Employer": "University of Utah",
@@ -1086,18 +1251,22 @@ function Form() {
     //   "YTD Earnings": "$131,789.84",
     //   "Hours Worked Per Week": "Unknown",
     // });
-    raw = JSON.stringify(originalData);
+    // raw = JSON.stringify(originalData);
     let requestOptions = {
       method: "POST",
       headers: myHeaders,
-      body: raw,
+      // body: formdata,
       redirect: "follow",
       crossDomain: true,
     };
 
     fetch(
       "https://www.solutioncenter.biz/LoginCredentialsAPI/api/SendFeedbacktoAPI?LoanId=" +
-        LoanId,
+        LoanId +
+        "&JSONInput=" +
+        JSON.stringify(originalData) +
+        "&ScandocId=" +
+        scandocId,
       requestOptions
     )
       .then((response) => response.json())
@@ -1204,6 +1373,9 @@ function Form() {
                     setWhichProcessMsg={setWhichProcessMsg}
                     setOpenMsg={setOpenMsg}
                     setDocCheck={setDocCheck}
+                    setDocTypeValue={setDocTypeValue}
+                    setDocDbFields={setDocDbFields}
+                    setFieldExtractProgres={setFieldExtractProgres}
                   />
                   <div
                     id="divDropZoneWrapper"
@@ -1252,11 +1424,14 @@ function Form() {
                             setWhichProcessMsg={setWhichProcessMsg}
                             setOpenMsg={setOpenMsg}
                             setDocCheck={setDocCheck}
+                            setDocTypeValue={setDocTypeValue}
+                            setDocDbFields={setDocDbFields}
+                            setFieldExtractProgres={setFieldExtractProgres}
                           />
                         );
                       })}
-                    <div class="pagebottom">
-                      <span class="footertext">Column Bottom</span>
+                    <div className="pagebottom">
+                      <span className="footertext">Column Bottom</span>
                     </div>
                   </div>
                 </TabPanel>
@@ -1297,6 +1472,7 @@ function Form() {
                             fnCheckConditionalRemainingModel={
                               fnCheckConditionalRemainingModel
                             }
+                            setFieldExtractProgres={setFieldExtractProgres}
                           />
                         );
                       })}
@@ -1354,6 +1530,8 @@ function Form() {
                       setDocChangeFlag(true);
                       setCondRemaining([]);
                       setValidationMsg("");
+                      if (DocTypeValue !== 169)
+                        fnGetDocTypeDBField(DocTypeValue);
 
                       let UploadedMonthlyIncome = uploadedDocument.filter(
                         (item) => item.ScanDocId == value
@@ -1458,8 +1636,22 @@ function Form() {
                   <Tab>JSON</Tab>
                 </TabList>
                 <TabPanel style={{ overflow: "auto", height: "76vh" }}>
-                  {Object.keys(ResJSON).length > 0 ? (
+                  {FieldExtractProgres && (
+                    <div>
+                      <CircularProgress
+                        size={15}
+                        style={{ margin: "0px 5px 0px 15px" }}
+                      />
+                      <span style={{ verticalAlign: "top", fontSize: "12px" }}>
+                        {" "}
+                        Extracting Pdf...
+                      </span>
+                    </div>
+                  )}
+                  {file && (
                     <>
+                      <label>Confidence Score:</label>
+                      <span id="spnConfidenceScore"></span>
                       <DropDown
                         label="Document Type"
                         options={DocType}
@@ -1469,6 +1661,12 @@ function Form() {
                         SelectedVal={DocTypeValue}
                         onChange={fnValueChange}
                       />
+                    </>
+                  )}
+                  {DocTypeValue !== 0 &&
+                  DocTypeValue === 169 &&
+                  Object.keys(ResJSON).length > 0 ? (
+                    <>
                       <TextBox
                         name="Name of Employer"
                         ResJSON={ResJSON}
@@ -1705,15 +1903,89 @@ function Form() {
                   ) : (
                     <></>
                   )}
+                  {file &&
+                    DocTypeValue !== 0 &&
+                    DocDbFields.map((fields, index) => (
+                      <>
+                        {fields.ElementType === 1 ? (
+                          <MultipleSelectCheckmarks
+                            handleMultiSelect={handleMultiSelect}
+                            value={AssetTypeOptionValue || ""}
+                            label="Type of Account"
+                            Options={AssetTypeOPtions}
+                            Typevalue="TypeOption"
+                            TypeText="TypeDesc"
+                          ></MultipleSelectCheckmarks>
+                        ) : (
+                          <DynamicTextBox
+                            name={fields.DisplayName}
+                            value={fields["Value"] || ""}
+                            onChange={(obj) => {
+                              let { name, value } = obj.target,
+                                DocDbFields_ = DocDbFields;
+                              DocDbFields_[index]["Value"] = value;
+
+                              setDocDbFields([...[], ...DocDbFields_]);
+
+                              // if (name === "Beginning Date")
+                              //   value = convertToFourDigitYear(value);
+                            }}
+                            onblur={() => {
+                              if (
+                                fields.DisplayName.toString().indexOf(
+                                  "Balance"
+                                ) > -1 ||
+                                fields.DisplayName.toString().indexOf(
+                                  "Amount"
+                                ) > -1
+                              ) {
+                                let formattedValue = formatCurrency(
+                                    fields["Value"],
+                                    2
+                                  ),
+                                  DocDbFields_ = DocDbFields;
+                                DocDbFields_[index]["Value"] = formattedValue;
+
+                                setDocDbFields([...[], ...DocDbFields_]);
+                              }
+                              setEnableSave(true);
+                            }}
+                            label={fields.DisplayName}
+                            onMouseHover={(e, value) => {
+                              handleFindFormToElements(e, true, value);
+                              // extractText();
+                            }}
+                            onMouseLeave={handleRemoveLine}
+                            setChangeLogModalOpen={setChangeLogModalOpen}
+                            LoanId={LoanId}
+                            DbFieldId={fields.Dbfieldid}
+                            ScanDocId={scandocId}
+                            setChangeLogData={setChangeLogData}
+                          />
+                        )}
+                      </>
+                    ))}
                   {Object.keys(ResJSON).length > 0 ? (
-                    <div class="pagebottom">
-                      <span class="footertext">Column Bottom</span>
+                    <div className="pagebottom">
+                      <span className="footertext">Column Bottom</span>
                     </div>
                   ) : (
                     ""
                   )}
                 </TabPanel>
                 <TabPanel>
+                  {FieldExtractProgres && (
+                    <div>
+                      <CircularProgress
+                        size={15}
+                        style={{ margin: "0px 5px 0px 15px" }}
+                      />
+                      <span style={{ verticalAlign: "top", fontSize: "12px" }}>
+                        {" "}
+                        Extracting Pdf...
+                      </span>
+                    </div>
+                  )}
                   {Object.keys(ResJSON).length > 0 ? (
                     <div>
                       <pre>{OriginalResponsefromAPI || OriginalResJSON}</pre>
@@ -1916,7 +2188,8 @@ function Form() {
               className={`btn ${EnableSave ? "btn-primary" : "btnDisable"}`}
               disabled={!EnableSave}
               onClick={() => {
-                fnCheckBorrEntityExistsValidation();
+                if (DocTypeValue !== 169) fnSaveOtherDBField();
+                else fnCheckBorrEntityExistsValidation();
               }}
             >
               Save

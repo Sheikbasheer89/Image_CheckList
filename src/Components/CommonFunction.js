@@ -196,6 +196,64 @@ const InputBox = (props) => {
   );
 };
 
+const DynamicTextBox = (props) => {
+  const {
+    label,
+    onChange,
+    value,
+    name,
+    onMouseHover = () => {},
+    onMouseLeave,
+    setChangeLogModalOpen,
+    LoanId,
+    ScanDocId,
+    DbFieldId,
+    setChangeLogData,
+    GetAPIChangeLog,
+    onblur = () => {},
+    formatCurrency,
+  } = props;
+
+  return (
+    <>
+      <div
+        className="form-group divInputWrapper"
+        onMouseEnter={(e) => {
+          onMouseHover(e, name);
+        }}
+        onMouseLeave={onMouseLeave}
+      >
+        <label>{label}</label>
+        <input
+          type="text"
+          className="form-control"
+          onChange={onChange || null}
+          name={name || null}
+          // value={ResJSON !== [] ? ResJSON[name] : ""}
+          value={value ? value : ""}
+          placeholder={label}
+          style={{ width: "95%", display: "inline-block" }}
+          onBlur={() => {
+            onblur();
+          }}
+        />
+        <span onClick={() => {}} style={{ cursor: "pointer", zIndex: 111 }}>
+          <FeedTwoToneIcon
+            style={{
+              verticalAlign: "bottom",
+              color: "#999",
+              cursor: "pointer",
+            }}
+            onClick={() => {
+              GetAPIChangeLog(LoanId, DbFieldId, ScanDocId);
+            }}
+          ></FeedTwoToneIcon>
+        </span>
+      </div>
+    </>
+  );
+};
+
 const openNewWindow = (URL) => {
   // if (!window.location.href.indexOf("localhost") === -1)
   URL = `/imagechecklistreact${URL}`;
@@ -244,4 +302,5 @@ export {
   Context,
   openNewWindow,
   fnSaveWindowPosition,
+  DynamicTextBox,
 };

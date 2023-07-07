@@ -28,6 +28,9 @@ function DropZone(props) {
     setWhichProcessMsg,
     setOpenMsg,
     setDocCheck,
+    setDocTypeValue,
+    setDocDbFields,
+    setFieldExtractProgres,
   } = props;
   // console.log(props);
   const [ExtractProgres, setExtractProgres] = useState(false);
@@ -39,7 +42,10 @@ function DropZone(props) {
     const [file] = event.target.files;
     const fileInfo = event.target.files[0];
     setExtractProgres(true);
-    // fnGetLeaderLineSetup([]);
+    setFieldExtractProgres(true);
+    setDocTypeValue(0);
+    // setDocDbFields([]);
+    fnGetLeaderLineSetup([]);
     setOriginalResJSON("");
     const reader = new FileReader();
 
@@ -90,6 +96,7 @@ function DropZone(props) {
               result?.toString().indexOf("business_logic_json") === -1
             ) {
               setExtractProgres(false);
+              setFieldExtractProgres(false);
               setExtractResult(result);
               setOriginalResJSON("");
 
@@ -106,6 +113,7 @@ function DropZone(props) {
             fnGetLeaderLineSetup(ParsedJson);
             setOriginalResJSON(result);
             setExtractProgres(false);
+            setFieldExtractProgres(false);
             setEnableSave(true);
             props.handleSetValuetoDD(
               JSON.parse(result)["doc_type"],
@@ -184,7 +192,7 @@ function DropZone(props) {
         }}
         onClick={(event) => {
           // return;
-          debugger;
+          // debugger;
           if (
             event.target.classList.toString().indexOf("btnCondRemaning") !== -1
           ) {
@@ -255,7 +263,31 @@ function DropZone(props) {
             //   e.target.style = "backgroundColor: yellow";
             // }}
           >
-            {label || ""}
+            {Number(props.DocTypeId) !== 269 ? (
+              <Stack spacing={2} direction="row">
+                <Button
+                  size="small"
+                  variant="contained"
+                  color="primary"
+                  onClick={() => {
+                    handleActivedropzone({
+                      ...activeDropzone,
+                      ...{ Id: props.ID, DocTypeId: props.DocTypeId },
+                    });
+                  }}
+                  style={{
+                    cursor: "pointer",
+                    marginBottom: "5px",
+                  }}
+                >
+                  <span
+                    dangerouslySetInnerHTML={{ __html: label || "" }}
+                  ></span>
+                </Button>
+              </Stack>
+            ) : (
+              label || ""
+            )}
 
             {typeId !== "1" && (
               <Fragment>

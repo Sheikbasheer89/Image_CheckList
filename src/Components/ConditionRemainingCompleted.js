@@ -115,7 +115,8 @@ export default function ConditionalRemainingCompleteModel(props) {
               </>
             </TabPanel>
             <TabPanel value="2">
-              {uploadedDocDetails.PassedValidation === 1 ? (
+              {uploadedDocDetails.PassedValidation === 1 &&
+              props.conditionDetails.typeId === 169 ? (
                 <span
                   dangerouslySetInnerHTML={{
                     __html: `1. <b>30 day period.</b> Paystubs are required to include / cover a minimum of 30 days. <br>
