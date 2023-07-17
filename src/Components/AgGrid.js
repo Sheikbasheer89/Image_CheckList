@@ -65,6 +65,7 @@ const AgGrid = (props) => {
               "Response Received": item.ResponseReceivedOn,
               "Response Json": JSON.parse(item.FeedbackResponse).message,
               "Requested Json": "",
+              "Requested By": item.RequestBy,
               RequestedData: JSON.parse(item.FeedbackRequest),
             });
           }
@@ -127,6 +128,7 @@ const AgGrid = (props) => {
         "wrap-text": () => true, // Apply wrap-text class to all cells in this column
       },
     },
+    { field: "Requested By", autoSize: true, maxWidth: 150 },
   ];
   const gridOptions = {
     domLayout: "autoHeight",

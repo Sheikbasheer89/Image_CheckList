@@ -1,4 +1,10 @@
-import React, { useState, useContext, useEffect, Fragment } from "react";
+import React, {
+  useState,
+  useContext,
+  useEffect,
+  Fragment,
+  useCallback,
+} from "react";
 import "./ImageCheckList.css";
 import CircularProgress from "@mui/material/CircularProgress";
 import InfoIcon from "@mui/icons-material/Info";
@@ -6,6 +12,7 @@ import { Context } from "./CommonFunction";
 import Stack from "@mui/material/Stack";
 import Button from "@mui/material/Button";
 import { handleAPI } from "./CommonFunction";
+import { useDropzone } from "react-dropzone";
 
 function DropZone(props) {
   const {
@@ -31,13 +38,40 @@ function DropZone(props) {
     setDocTypeValue,
     setDocDbFields,
     setFieldExtractProgres,
+    setTaskId,
+    setActiveDropzone,
   } = props;
-  // console.log(props);
+  // console.log("Props", props);
   const [ExtractProgres, setExtractProgres] = useState(false);
   const { contextDetails, setContextDetails } = useContext(Context);
   // console.clear();
   // console.log("=========================");
   // console.log(contextDetails);
+
+  // const onDrop = useCallback((acceptedFiles) => {
+  //   acceptedFiles.forEach((file) => {
+  //     // let event = { target: file };
+  //     fileUpload(file);
+  //     // const reader = new FileReader();
+
+  //     // reader.onabort = () => console.log("file reading was aborted");
+
+  //     // reader.onerror = () => console.log("file reading has failed");
+
+  //     // reader.onload = () => {
+  //     //   const binaryStr = reader.result;
+
+  //     //   console.log("File Name ===> ", file.name);
+
+  //     //   console.log("Data ===> ", binaryStr);
+  //     // };
+
+  //     // reader.readAsArrayBuffer(file);
+  //   });
+  // }, []);
+
+  // const { getRootProps, getInputProps } = useDropzone({ onDrop });
+
   const fileUpload = (event) => {
     const [file] = event.target.files;
     const fileInfo = event.target.files[0];
@@ -45,7 +79,7 @@ function DropZone(props) {
     setFieldExtractProgres(true);
     setDocTypeValue(0);
     // setDocDbFields([]);
-    fnGetLeaderLineSetup([]);
+    fnGetLeaderLineSetup({});
     setOriginalResJSON("");
     const reader = new FileReader();
 
@@ -99,9 +133,9 @@ function DropZone(props) {
               setFieldExtractProgres(false);
               setExtractResult(result);
               setOriginalResJSON("");
-
+              setScandocId(getScandocId);
               fnPdfclassification(file, getScandocId, requestOptions);
-              fnGetLeaderLineSetup([]);
+              fnGetLeaderLineSetup({});
               return;
             }
             // console.log("ScandocId", getScandocId);
@@ -112,13 +146,14 @@ function DropZone(props) {
             console.log(ParsedJson);
             fnGetLeaderLineSetup(ParsedJson);
             setOriginalResJSON(result);
-            setExtractProgres(false);
-            setFieldExtractProgres(false);
+
             setEnableSave(true);
             props.handleSetValuetoDD(
               JSON.parse(result)["doc_type"],
               props.DocTypeId
             );
+            setExtractProgres(false);
+            setFieldExtractProgres(false);
             // fndrawfield();
           })
           .catch((error) => console.log("error", error));
@@ -152,7 +187,7 @@ function DropZone(props) {
         setWhichProcessMsg(0);
         setDocCheck(JSON.parse(response).doc_type);
         setOpenMsg(true);
-
+        setTaskId(JSON.parse(response).task_id);
         props.handleSetValuetoDD(
           JSON.parse(response)["doc_type"],
           props.DocTypeId
@@ -164,11 +199,20 @@ function DropZone(props) {
       });
   }
 
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const files = Array.from(e.dataTransfer.files);
+    // Process the dropped files here
+    console.log(files);
+  };
+
   useEffect(() => {
     if (
       props.ID === activeDropzone.Id &&
-      props.DocTypeId === activeDropzone.DocTypeId
+      props.DocTypeId === activeDropzone.DocTypeId &&
+      activeDropzone.PreventScroll
     ) {
+      setActiveDropzone({ ...activeDropzone, PreventScroll: false });
       setTimeout(() => {
         try {
           var myElement = document.querySelector(".activeDropZone");
@@ -233,6 +277,7 @@ function DropZone(props) {
             width: "90%",
             cursor: "pointer",
           }}
+          // {...getRootProps()}
         >
           {/* <div style={{ display: "inline-block", width: "30%" }}> */}
           <label
@@ -253,6 +298,8 @@ function DropZone(props) {
               accept=".pdf"
               onChange={fileUpload}
             ></input>
+
+            {/* <input style={{ display: "none" }} {...getInputProps} /> */}
           </label>
           {/* </div> */}
           {/* <div style={{ display: "inline-block", width: "69%" }}> */}

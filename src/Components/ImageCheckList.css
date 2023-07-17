@@ -399,7 +399,8 @@ span.MuiCheckbox-colorPrimary {
 
 .dropdown-item {
   padding: 5px 10px !important;
-  border-bottom: 1px solid #999;
+  border-bottom: 1px solid #e5e5e5;
+  font-size: 13px !important;
 }
 
 .dropdown-item:last-child {
@@ -460,4 +461,50 @@ span.MuiCheckbox-colorPrimary {
   height: 30px;
   color: rgb(255, 255, 255);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+.btnLoanApp,
+.buttonMenuGroup button {
+  border-radius: 0px;
+  display: inline-block;
+  padding: 6px 12px;
+  margin-bottom: 0;
+  font-size: 14px;
+  font-weight: normal;
+  line-height: 1.4285;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+  cursor: pointer;
+  background-image: none;
+  border: 1px solid transparent;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -o-user-select: none;
+  user-select: none;
+  background-color: #428bca;
+  border-color: #357ebd;
+  font-size: 11px !important;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1000;
+  display: none;
+  float: left;
+  min-width: 160px;
+  padding: 5px 0;
+  margin: 2px 0 0;
+  font-size: 14px;
+  list-style: none;
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  -webkit-box-shadow: 0 6px 12px rgba(0, 0, 0, 0.175);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.175);
+  background-clip: padding-box;
 }

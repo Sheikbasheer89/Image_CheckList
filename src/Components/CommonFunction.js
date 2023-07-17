@@ -254,9 +254,10 @@ const DynamicTextBox = (props) => {
   );
 };
 
-const openNewWindow = (URL) => {
+const openNewWindow = (URL, flag) => {
   // if (!window.location.href.indexOf("localhost") === -1)
-  URL = `/imagechecklistreact${URL}`;
+
+  if (flag !== 1) URL = `/imagechecklistreact${URL}`;
   window.open(
     URL,
     "_blank",

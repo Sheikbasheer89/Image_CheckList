@@ -12,6 +12,8 @@ import "../Components/BoostrapOld.css";
 import DropZone from "./DropZone";
 import MultipleSelectCheckmarks from "./MultipleSelect";
 import CircularProgress from "@mui/material/CircularProgress";
+import Stack from "@mui/material/Stack";
+import Button from "@mui/material/Button";
 import {
   handleAPI,
   TextBox,
@@ -59,7 +61,7 @@ function Form() {
   const classes = useStyles();
   const [numPages, setNumPages] = useState(null);
   const [file, setFile] = useState(null);
-  const [ResJSON, setResJSON] = useState([]);
+  const [ResJSON, setResJSON] = useState({});
   const [LoanId, setLoanId] = useState("");
   const [DocType, setDocType] = useState("");
   const [Details, setDetails] = useState({ DocType: 0 });
@@ -82,6 +84,7 @@ function Form() {
   const [UploadedDocValue, setUploadedDocValue] = useState("0");
   const [DocChangeFlag, setDocChangeFlag] = useState(false);
 
+  const [TaskId, setTaskId] = useState("");
   const [ExtractResult, setExtractResult] = useState("");
   const [FieldExtractProgres, setFieldExtractProgres] = useState(false);
 
@@ -96,7 +99,11 @@ function Form() {
     UploadedBy: "",
   });
 
-  const [activeDropzone, setActiveDropzone] = useState({ Id: 0, DocTypeId: 0 });
+  const [activeDropzone, setActiveDropzone] = useState({
+    Id: 0,
+    DocTypeId: 0,
+    PreventScroll: false,
+  });
   const [checkIcon, setcheckIcon] = useState({
     Entity: false,
     Borrower: false,
@@ -175,11 +182,42 @@ function Form() {
     })
       .then((response) => {
         console.log(response);
+        console.log(activeDropzone);
         handleFooterMsg("Saved Successfully.");
         setEnableSave(false);
         fnSendFeedbacktoAPI();
 
         fnRunImageValidation(1);
+
+        // let UpdateUploadedDoc = DocDetails;
+
+        // UpdateUploadedDoc.forEach((item) => {
+        //   if (Number(item.ScanDocId) === Number(scandocId))
+        //     item.DocTypeId = DocTypeValue;
+        // });
+
+        // setDocDetails([...[], ...UpdateUploadedDoc]);
+
+        // if (Number(activeDropzone.DocTypeId) !== Number(DocTypeValue)) {
+        //   let FilterDoc = DocDetails.filter(
+        //     (item) =>
+        //       Number(item.DocTypeId) === Number(DocTypeValue) &&
+        //       Number(item.ScanDocId) !== 0
+        //   );
+        //   //  console.log(FilterDoc);
+        //   if (FilterDoc.length > 0) {
+        //     // fnPageload(LoanId, userId, userType, 1, FilterDoc[0].DocTypeId);
+        //     setTimeout(() => {
+        //       handleActivedropzone(
+        //         {
+        //           ...activeDropzone,
+        //           ...{ Id: FilterDoc[0].ID, DocTypeId: DocTypeValue },
+        //         },
+        //         1
+        //       );
+        //     }, 2000);
+        //   }
+        // }
 
         // response = JSON.parse(response);
         // console.log(response);
@@ -559,6 +597,7 @@ function Form() {
     // setEntityTypeId(entityType);
     setDescription(e.target.selectedOptions[0].text);
     if (value !== 169) fnGetDocTypeDBField(value);
+    // document.getElementById("spnResubmitdiv").style.display = "inline-block";
   };
 
   const fnBorrEntityValueChange = (e) => {
@@ -695,30 +734,63 @@ function Form() {
           );
 
         UploadedDocFiles = [...resultArr, ...UploadedDocFiles];
+
+        // const mergedArray = UploadedDocFiles.map((item, index) => {
+        //   // Find the corresponding item in array2 based on the id
+        //   const matchingItem = resultArr.find(
+        //     (el) => Number(el.ScanDocId) === Number(item.ScanDocId)
+        //   );
+
+        //   // Add the age property to the item from array1
+
+        //   return {
+        //     ...item,
+        //     ...{
+        //       Confident_Score: matchingItem.Confident_Score,
+        //       Task_Id: matchingItem.Task_Id,
+        //     },
+        //   };
+        // });
+
+        // console.log(mergedArray);
+        docDec.sort((a, b) => a.ShortName?.localeCompare(b.ShortName));
+        // debugger;
         setDocDetails(docDec);
 
         setUploadedDocument(UploadedDocFiles);
+
         //  console.log("resultArr[0]", resultArr[0]);
-        if (!DocChangeFlag) {
+        if (!DocChangeFlag || flag === 1) {
+          // alert("Here");
           // alert(resultArr[0]["ScanDocId"]);
           setUploadedDocValue(resultArr[0]["ScanDocId"]);
         }
         setDocChangeFlag(false);
-        if (flag === 1) {
-          let FilterDoc = docDec.filter(
-            (item) => item.DocTypeId === UploadedDocTypeId
-          );
-          //  console.log(FilterDoc);
-          if (FilterDoc.length > 0) {
-            handleActivedropzone(
-              {
-                ...activeDropzone,
-                ...{ Id: FilterDoc[0].ID, DocTypeId: FilterDoc[0].DocTypeId },
-              },
-              flag
-            );
-          }
+
+        let UploadedMonthlyIncome = UploadedDocFiles.filter(
+          (item) => item.DocTypeId == 169
+        );
+
+        if (document.getElementById("spnMonthlyIncomeMain") != null) {
+          document.getElementById("spnMonthlyIncomeMain").innerHTML =
+            UploadedMonthlyIncome[0]?.IncomeDetails || "";
         }
+        //Commented below lines to Pick the uploaded doc faster
+        // if (flag === 1) {
+        //   let FilterDoc = docDec.filter(
+        //     (item) => Number(item.DocTypeId) === Number(UploadedDocTypeId)
+        //   );
+        //   //  console.log(FilterDoc);
+        //   if (FilterDoc.length > 0) {
+        //     handleActivedropzone(
+        //       {
+        //         ...activeDropzone,
+        //         ...{ Id: FilterDoc[0].ID, DocTypeId: FilterDoc[0].DocTypeId },
+        //       },
+        //       flag
+        //     );
+        //   }
+        // }
       })
       .catch((error) => {
         //debugger;
@@ -799,7 +871,7 @@ function Form() {
           setOriginalResponsefromAPI(response.split("~")[2]);
         } else {
           setOriginalResponsefromAPI(null);
-          if (Json.toString().indexOf("{") === -1) setResJSON([]);
+          if (Json.toString().indexOf("{") === -1) setResJSON({});
         }
 
         if (
@@ -820,7 +892,9 @@ function Form() {
   }
 
   const handleSetValuetoDD = (docType, OrgDocId) => {
+    if (OrgDocId === undefined) return;
     let UploadedDocTypeId = 0;
+
     if (docType !== undefined && DocType !== "") {
       let Filterdoctype = DocType.filter((items) => {
         return (
@@ -832,6 +906,8 @@ function Form() {
       if (Filterdoctype.length > 0) {
         setDocTypeValue(Filterdoctype[0].Id);
         // debugger;
+        if (DocTypeValue !== 169)
+          fnGetDocTypeDBField(Filterdoctype[0].Id, scandocId, 1);
         setCategory(Filterdoctype[0].CategoryType);
         setEntityTypeId(Filterdoctype[0].iEntityType);
         setDescription(Filterdoctype[0].DocType);
@@ -842,6 +918,20 @@ function Form() {
           debugger;
           // console.log(activeDropzone);
           UploadedDocTypeId = Filterdoctype[0].Id;
+        }
+
+        let FilterDoc = DocDetails.filter(
+          (item) => Number(item.DocTypeId) === Number(UploadedDocTypeId)
+        );
+        //  console.log(FilterDoc);
+        if (FilterDoc.length > 0) {
+          handleActivedropzone(
+            {
+              ...activeDropzone,
+              ...{ Id: FilterDoc[0].ID, DocTypeId: FilterDoc[0].DocTypeId },
+            },
+            1
+          );
         }
       }
     }
@@ -877,7 +967,7 @@ function Form() {
 
       setPdfElements(ele);
     } else {
-      setResJSON([]);
+      setResJSON({});
     }
   }
 
@@ -1015,6 +1105,8 @@ function Form() {
   //   }
   // }, [ResJSON]);
   function handleActivedropzone(activeDropzone, flag) {
+    if (flag === 1) activeDropzone.PreventScroll = true;
+    else activeDropzone.PreventScroll = false;
     setActiveDropzone(activeDropzone);
     let activeScandocId = uploadedDocument.filter(
       (item) =>
@@ -1046,7 +1138,7 @@ function Form() {
             UploadedMonthlyIncome[0].Confident_Score = "";
           if (document.querySelector("#spnConfidenceScore") !== null)
             document.querySelector("#spnConfidenceScore").innerHTML =
-              " " + UploadedMonthlyIncome[0].Confident_Score;
+              " " + UploadedMonthlyIncome[0].Confident_Score + " | ";
         }
       }, 100);
 
@@ -1069,10 +1161,10 @@ function Form() {
           UploadedMonthlyIncome[0]?.RemainingCount;
     } else {
       setFile(null);
-      setResJSON([]);
+      setResJSON({});
       setShowTools(0);
-      uploadedDocDetails["ScanDocId"] = "";
-      uploadedDocDetails.PassedValidation = 0;
+      // uploadedDocDetails["ScanDocId"] = "";
+      // uploadedDocDetails.PassedValidation = 0;
     }
   }
   // useEffect(() => {
@@ -1116,38 +1208,55 @@ function Form() {
     setUploadedDocDetails(checkedIndex);
   };
 
-  function fnGetDocTypeDBField(value, iScanDocId) {
-    if (Number(value) !== Number(169)) setResJSON([]);
+  function fnGetDocTypeDBField(value, iScanDocId, flag) {
+    if (Number(value) !== Number(169)) {
+      setResJSON({});
 
-    setDocDbFields([]);
-    handleAPI({
-      name: "GetDocTypeDbField",
-      params: {
-        DocTypeId: value,
-        LoanId: LoanId,
-        ScandocId: scandocId || iScanDocId,
-      },
-    })
-      .then((response) => {
-        console.log(response);
-        let DocDbFields_ =
-          JSON.parse(JSON.parse(response).Table[0].Column1) !== null
-            ? JSON.parse(JSON.parse(response).Table[0].Column1)
-            : [];
-        // setDocDbFields([...DocDbFields, ...DocDbFields_]);
-        setDocDbFields(DocDbFields_);
-        setAssetTypeOptionValue(
-          DocDbFields_.filter(
-            (item) => item.DisplayName === "Type of Account"
-          )[0].Value.split(", ")
-        );
-
-        // setModalOpen(true);
+      handleAPI({
+        name: "GetDocTypeDbField",
+        params: {
+          DocTypeId: value,
+          LoanId: LoanId,
+          ScandocId: scandocId || iScanDocId,
+        },
       })
-      .catch((error) => {
-        //debugger;
-        console.log("error", error);
-      });
+        .then((response) => {
+          console.log(response);
+          let DocDbFields_ =
+            JSON.parse(JSON.parse(response).Table[0].Column1) !== null
+              ? JSON.parse(JSON.parse(response).Table[0].Column1)
+              : [];
+          // setDocDbFields([...DocDbFields, ...DocDbFields_]);
+          setDocDbFields(DocDbFields_);
+          if (DocDbFields_.length > 0) {
+            setAssetTypeOptionValue(
+              DocDbFields_.filter(
+                (item) => item.DisplayName === "Type of Account"
+              )[0].Value.split(", ")
+            );
+          }
+
+          // setModalOpen(true);
+        })
+        .catch((error) => {
+          //debugger;
+          console.log("error", error);
+        });
+    }
+    if (Number(value) === Number(169) && flag !== 1) {
+      debugger;
+      setDocDbFields([]);
+      if (OriginalResJSON !== "") {
+        let ParsedJson = JSON.parse(OriginalResJSON)["business_logic_json"];
+        // setResJSON({ ...{}, ...ParsedJson });
+        setResJSON(ParsedJson);
+        setDocTypeValue(169);
+      }
+
+      // fnGetLeaderLineSetup(ParsedJson);
+      // setDocDbFields([]);
+      // return;
+    }
   }
 
   function fnFrequencyValue(FreqValue) {
@@ -1185,18 +1294,18 @@ function Form() {
     return `${month}/${day}/${year}`;
   }
 
-  async function convertUrlToFile(url, FileName) {
-    return fetch(url)
-      .then((response) => response.blob())
-      .then((blob) => {
-        // Create a new File object from the Blob
-        const file = new File([blob], FileName, { type: "application/pdf" });
-        return file;
-      });
-  }
+  // async function convertUrlToFile(url, FileName) {
+  //   return fetch(url)
+  //     .then((response) => response.blob())
+  //     .then((blob) => {
+  //       // Create a new File object from the Blob
+  //       const file = new File([blob], FileName, { type: "application/pdf" });
+  //       return file;
+  //     });
+  // }
 
-  async function fnSendFeedbacktoAPI() {
-    debugger;
+  function fnSendFeedbacktoAPI() {
+    // debugger;
     var myHeaders = new Headers();
     myHeaders.append("x-api-key", "9cQKFT3dYKrOnF8CEDKO4DTaSKxrHUD4JK8f3tT3");
     myHeaders.append("Content-Type", "application/json");
@@ -1221,8 +1330,17 @@ function Form() {
     //     });
     // } else fileName = file.name || "";
 
+    let UploadedMonthlyIncome = uploadedDocument.filter(
+      (item) => item.ScanDocId == scandocId
+    );
+    console.log("UP", UploadedMonthlyIncome[0].Task_Id);
+    // return;
     originalData = {
       doc_type: docType[0].DocType,
+      task_id:
+        docType[0].DocType === "Pay Stub"
+          ? JSON.parse(OriginalResJSON)["task_id"]
+          : UploadedMonthlyIncome[0].Task_Id,
       ...(docType[0].DocType === "Pay Stub"
         ? ResJSON
         : DocDbFields.reduce((result, item) => {
@@ -1234,6 +1352,12 @@ function Form() {
     // let formdata = new FormData();
     // formdata.append("file", file);
     // formdata.append("json_data", JSON.stringify(originalData));
+    // originalData = Object.fromEntries(
+    //   Object.entries(originalData).map(([key, value]) => [
+    //     key.replace(/\s/g, ""),
+    //     value,
+    //   ])
+    // );
 
     console.log("file=====>", file);
     console.log("=====>", JSON.stringify(originalData));
@@ -1264,17 +1388,28 @@ function Form() {
       "https://www.solutioncenter.biz/LoginCredentialsAPI/api/SendFeedbacktoAPI?LoanId=" +
         LoanId +
         "&JSONInput=" +
-        JSON.stringify(originalData) +
+        JSON.stringify(originalData)
+          .replace("#", "")
+          .replace("?", "")
+          .replace("%", "") +
         "&ScandocId=" +
-        scandocId,
+        scandocId +
+        "&SessionId=" +
+        SessionId,
       requestOptions
     )
       .then((response) => response.json())
       .then((result) => {
         //    console.log(result);
         handleFooterMsg(JSON.parse(result)["message"]);
+        // document.getElementById("spnResubmitdiv").style.display = "none";
+        // document.getElementById("ResubmitProgress").style.display = "none";
       })
-      .catch((error) => console.log("error", error));
+      .catch((error) => {
+        console.log("error", error);
+        // document.getElementById("spnResubmitdiv").style.display = "none";
+        // document.getElementById("ResubmitProgress").style.display = "none";
+      });
   }
   const handleFooterMsg = (msg) => {
     document.getElementById("spnSaveStatus").innerHTML = msg;
@@ -1299,7 +1434,7 @@ function Form() {
           <span
             style={{ fontSize: "large", fontWeight: "bold", color: "white" }}
           >
-            Image Checklist
+            Document Upload
           </span>
           <span
             style={{ fontSize: "large", fontWeight: "bold", color: "white" }}
@@ -1376,6 +1511,8 @@ function Form() {
                     setDocTypeValue={setDocTypeValue}
                     setDocDbFields={setDocDbFields}
                     setFieldExtractProgres={setFieldExtractProgres}
+                    setTaskId={setTaskId}
+                    setActiveDropzone={setActiveDropzone}
                   />
                   <div
                     id="divDropZoneWrapper"
@@ -1427,6 +1564,8 @@ function Form() {
                             setDocTypeValue={setDocTypeValue}
                             setDocDbFields={setDocDbFields}
                             setFieldExtractProgres={setFieldExtractProgres}
+                            setTaskId={setTaskId}
+                            setActiveDropzone={setActiveDropzone}
                           />
                         );
                       })}
@@ -1650,8 +1789,50 @@ function Form() {
                   )}
                   {file && (
                     <>
-                      <label>Confidence Score:</label>
-                      <span id="spnConfidenceScore"></span>
+                      <div>
+                        <label>Confidence Score:</label>
+                        <span id="spnConfidenceScore"></span>
+                        {/* <span
+                          id="spnResubmitdiv"
+                          style={{ display: "none", marginLeft: "25px" }}
+                        >
+                          <Stack spacing={2} direction="row">
+                            <Button
+                              size="small"
+                              variant="contained"
+                              color="primary"
+                              id="btnResubmitdocu"
+                              onClick={() => {
+                                document.getElementById(
+                                  "ResubmitProgress"
+                                ).style.display = "inline-block";
+                                fnSendFeedbacktoAPI();
+                              }}
+                              style={{
+                                cursor: "pointer",
+                                marginBottom: "5px",
+                              }}
+                            >
+                              Resubmit Document
+                            </Button>
+                            <div
+                              style={{ display: "none" }}
+                              id="ResubmitProgress"
+                            >
+                              <CircularProgress
+                                size={15}
+                                style={{ margin: "0px 5px 0px 15px" }}
+                              />
+                              <span
+                                style={{
+                                  verticalAlign: "top",
+                                  fontSize: "12px",
+                                }}
+                              ></span>
+                            </div>
+                          </Stack>
+                        </span> */}
+                      </div>
                       <DropDown
                         label="Document Type"
                         options={DocType}
@@ -1896,11 +2077,12 @@ function Form() {
                         GetAPIChangeLog={GetAPIChangeLog}
                       /> */}
                     </>
-                  ) : ResJSON ? (
-                    <>{ResJSON}</>
-                  ) : ExtractResult.length > 0 ? (
-                    ExtractResult
                   ) : (
+                    // ) : ResJSON !== {} ? (
+                    //   <>{ResJSON}</>
+                    // ExtractResult.length > 0 ? (
+                    //   ExtractResult
+                    // ) :
                     <></>
                   )}
                   {file &&
@@ -2021,6 +2203,7 @@ function Form() {
           >
             <div className="btn-group dropup align-left">
               <MenuOptions
+                className="btnLoanApp"
                 title="Menu"
                 Options={[
                   {
@@ -2036,6 +2219,24 @@ function Form() {
                       // console.log("FeedBack");
                     },
                   },
+                  Number(userId) === 2099 ||
+                    (Number(userId) === 1 && {
+                      title: "OCR Data to Recognize",
+                      click: (e) => {
+                        // window.open("www.google.com", "mozillaWindow", "popup");
+                        // window.open(
+                        //   <AgGrid />,
+                        //   "",
+                        //   "width=1200,height=1200,resizable=yes,scrollbars=yes"
+                        // );
+                        openNewWindow(
+                          `https://www.directcorp.com/ImageChecklist/Presentation/Webforms/ImageChecklist_Setup.aspx?SessionID=${SessionId}&DocType=${DocTypeValue}`,
+                          1
+                        );
+                        // console.log("FeedBack");
+                      },
+                    }),
+
                   {
                     title: "Save Form Size and Position",
                     click: () => {

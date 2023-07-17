@@ -37,7 +37,7 @@ export default function CustomizedSnackbars(props) {
             : `This document is recognized as ${
                 props.DocCheck
               } and was moved to${" "}
-          ${props.DocCheck} section!`}
+          ${props.DocCheck} section.`}
         </Alert>
       </Snackbar>
     </Stack>

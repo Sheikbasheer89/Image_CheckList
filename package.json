@@ -23,6 +23,7 @@
     "react": "^18.2.0",
     "react-bootstrap": "^2.7.4",
     "react-dom": "^18.2.0",
+    "react-dropzone": "^14.2.3",
     "react-new-window": "^1.0.1",
     "react-pdf": "^6.2.2",
     "react-router-dom": "^6.11.2",
