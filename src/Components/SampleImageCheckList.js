@@ -143,6 +143,9 @@ function Form() {
 
   const [AssetTypeOptionValue, setAssetTypeOptionValue] = React.useState([]);
 
+  const [IncomeCalcProgres, setIncomeCalcProgres] = useState(false);
+  const [confidenceScoreDetails, setConfidenceScoreDetails] = useState("");
+
   const options = {
     cMapUrl: "cmaps/",
     standardFontDataUrl: "standard_fonts/",
@@ -152,6 +155,12 @@ function Form() {
   const [ValidationMsg, setValidationMsg] = React.useState("");
   const [CondCompleted, setCondCompleted] = React.useState([]);
   const [DocDbFields, setDocDbFields] = React.useState([]);
+  const [OrgDocDbFields, setOrgDocDbFields] = React.useState([]);
+  const [OrgDocTypeValue, setOrgDocTypeValue] = useState("0");
+
+  const [FeedBackCollection, setFeedBackCollection] = useState(false);
+
+  const [UpdateMappingonlyonNew, setUpdateMappingonlyonNew] = useState(false);
 
   function fnCheckConditionalRemainingModel() {
     setConditionalRemainingModel(true);
@@ -174,7 +183,10 @@ function Form() {
       name: "SaveDBFieldFromAPI",
       params: {
         LoanId: LoanId,
-        InputJSON: JSON.stringify(DocDbFields),
+        InputJSON: JSON.stringify(DocDbFields)
+          .replace("#", "")
+          .replace("?", "")
+          .replace("%", ""),
         AssetTypeOptions: val_,
         ScandocId: scandocId,
         DocTypeId: DocTypeValue,
@@ -413,16 +425,16 @@ function Form() {
         );
       }
 
-      if (eleTo.length == 0) {
-        eleTo = PdfEle.filter(
-          (ele) =>
-            ele.textContent
-              .toString()
-              .replaceAll("$", "")
-              .toLowerCase()
-              .indexOf(value.toString().replaceAll("$", "").toLowerCase()) > -1
-        );
-      }
+      // if (eleTo.length == 0) {
+      //   eleTo = PdfEle.filter(
+      //     (ele) =>
+      //       ele.textContent
+      //         .toString()
+      //         .replaceAll("$", "")
+      //         .toLowerCase()
+      //         .indexOf(value.toString().replaceAll("$", "").toLowerCase()) > -1
+      //   );
+      // }
 
       setPdfElements([...PdfElements, ...eleTo]);
     }
@@ -530,6 +542,7 @@ function Form() {
   const handleDrawLine = (eleFrom, eleTo, isDraw) => {
     try {
       if (eleFrom && eleTo) {
+        console.log("eleFrom =" + eleFrom + "eleTo =" + eleTo);
         let ele = eleTo[0];
         handleRemoveLine();
 
@@ -591,6 +604,8 @@ function Form() {
     // debugger;
     let { name, value } = e.target;
     setDetails({ ...Details, [name]: value });
+    if (value !== DocTypeValue) setFeedBackCollection(false);
+
     setDocTypeValue(value);
     setEnableSave(true);
     // setCategory(catType);
@@ -627,11 +642,16 @@ function Form() {
     setShowTools("1");
     setTimeout(() => {
       if (OriginalResJSON) {
-        let ParsedJson = JSON.parse(OriginalResJSON)["business_logic_json"];
+        let ParsedJson;
+        if (OriginalResJSON.indexOf("extraction_json") > -1)
+          ParsedJson = JSON.parse(OriginalResJSON)["extraction_json"] ?? {};
+        //ParsedJson = JSON.parse(OriginalResJSON)["business_logic_json"];
+        else ParsedJson = JSON.parse(OriginalResJSON);
         fnGetLeaderLineSetup(ParsedJson);
         handleSetValuetoDD(JSON.parse(OriginalResJSON)["doc_type"]);
       }
-    }, 500);
+      setUpdateMappingonlyonNew(true);
+    }, 1000);
   }
 
   function fnRemoveDuplicate(array, key) {
@@ -662,15 +682,34 @@ function Form() {
   }, []);
 
   const handleResize = () => {
-    let div = document.querySelector("#divDropZoneWrapper");
+    let div = document.querySelector("#divDropZoneWrapper"),
+      divBody = document.querySelectorAll(".ContainerBorder");
 
+    if (divBody.length > 0) {
+      let windowHeight = window.innerHeight,
+        headerHeight = document.querySelector(".headergradient").offsetHeight,
+        footerHeight = document.querySelector(".navbar").offsetHeight,
+        newBodyHeight = windowHeight - (headerHeight + footerHeight);
+
+      divBody.forEach((div) => {
+        div.style.minHeight = newBodyHeight - 25 + "px";
+      });
+    }
     if (div) {
-      let height =
-        document.querySelector(".react-tabs__tab-list").offsetHeight / 10;
-      div.style.maxHeight = 67.8 - height + "vh";
+      let height = document.querySelector(".react-tabs__tab-list").offsetHeight,
+        tHeight = document.querySelector(".ContainerBorder").offsetHeight,
+        fDropZone = document.querySelector(".divMaindropZone").offsetHeight;
+      div.style.maxHeight = tHeight - fDropZone - height - 25 + "px";
     }
   };
-  function fnPageload(iLoanId, iUserId, iUserType, flag, UploadedDocTypeId) {
+  function fnPageload(
+    iLoanId,
+    iUserId,
+    iUserType,
+    flag,
+    UploadedDocTypeId,
+    iScanDocIds
+  ) {
     handleAPI({
       name: "GetUWStatusChecklistData",
       params: {
@@ -706,6 +745,8 @@ function Form() {
           delete e.SDT;
           e["ShortName"] = docType["ShortName"];
         });
+
+        docDec = docDec.filter((item) => Number(item.ScandocId) !== 0);
 
         docDec = [...docDec, ...resultArr];
 
@@ -760,37 +801,48 @@ function Form() {
         setUploadedDocument(UploadedDocFiles);
 
         //  console.log("resultArr[0]", resultArr[0]);
-        if (!DocChangeFlag || flag === 1) {
-          // alert("Here");
-          // alert(resultArr[0]["ScanDocId"]);
-          setUploadedDocValue(resultArr[0]["ScanDocId"]);
-        }
+
         setDocChangeFlag(false);
 
         let UploadedMonthlyIncome = UploadedDocFiles.filter(
-          (item) => item.DocTypeId == 169
+          (item) => Number(item.DocTypeId) === Number(169)
         );
 
-        if (document.getElementById("spnMonthlyIncomeMain") != null) {
-          document.getElementById("spnMonthlyIncomeMain").innerHTML =
-            UploadedMonthlyIncome[0]?.IncomeDetails || "";
-        }
+        setTimeout(() => {
+          if (document.getElementById("spnMonthlyIncomeMain") != null) {
+            document.getElementById("spnMonthlyIncomeMain").innerHTML =
+              UploadedMonthlyIncome[0]?.IncomeDetails || "";
+          }
+        }, 500);
+
+        setIncomeCalcProgres(false);
         //Commented below lines to Pick the uploaded doc faster
-        // if (flag === 1) {
-        //   let FilterDoc = docDec.filter(
-        //     (item) => Number(item.DocTypeId) === Number(UploadedDocTypeId)
-        //   );
-        //   //  console.log(FilterDoc);
-        //   if (FilterDoc.length > 0) {
-        //     handleActivedropzone(
-        //       {
-        //         ...activeDropzone,
-        //         ...{ Id: FilterDoc[0].ID, DocTypeId: FilterDoc[0].DocTypeId },
-        //       },
-        //       flag
-        //     );
-        //   }
-        // }
+        // setTimeout(() => {
+        if (flag === 1) {
+          let FilterDoc = docDec.filter(
+            (item) => Number(item.DocTypeId) === Number(UploadedDocTypeId)
+          );
+          //  console.log(FilterDoc);
+          if (FilterDoc.length > 0) {
+            handleActivedropzone(
+              {
+                ...activeDropzone,
+                ...{ Id: FilterDoc[0].ID, DocTypeId: FilterDoc[0].DocTypeId },
+              },
+              flag,
+              UploadedDocFiles
+            );
+          }
+        }
+
+        if (!DocChangeFlag || flag === 1) {
+          // alert("Here");
+          // alert(resultArr[0]["ScanDocId"]);
+          setUploadedDocValue(iScanDocIds);
+          // if (resultArr.length > 0)
+          //   setUploadedDocValue(resultArr[0]["ScanDocId"]);
+        }
+        // }, 500);
       })
       .catch((error) => {
         //debugger;
@@ -852,7 +904,7 @@ function Form() {
         //debugger;
         console.log("error", error);
       });
-  }, [LoanId]);
+  }, []);
 
   function fnGetImagefromServer(ScandocId) {
     handleAPI({
@@ -867,12 +919,14 @@ function Form() {
         setFile(PdfPath);
         // if (Json instanceof String)
 
-        if (response.split("~")[2]?.trim() ?? "") {
-          setOriginalResponsefromAPI(response.split("~")[2]);
-        } else {
-          setOriginalResponsefromAPI(null);
-          if (Json.toString().indexOf("{") === -1) setResJSON({});
-        }
+        // if (response.split("~")[2]?.trim() ?? "") {
+        // setOriginalResponsefromAPI(response.split("~")[2]);
+
+        setOriginalResponsefromAPI(Json);
+        // } else {
+        //   setOriginalResponsefromAPI(null);
+        if (Json.toString().indexOf("{") === -1) setResJSON({});
+        // }
 
         if (
           Json.toString().indexOf("status code") === -1 &&
@@ -880,6 +934,11 @@ function Form() {
         )
           setOriginalResJSON(Json);
         else setOriginalResJSON("");
+
+        // setTimeout(() => {
+        // setUpdateMappingonlyonNew(true);
+        // }, 500);
+
         // else setOriginalResJSON(Json);
 
         // console.log(PdfPath);
@@ -891,9 +950,18 @@ function Form() {
       });
   }
 
-  const handleSetValuetoDD = (docType, OrgDocId) => {
+  const handleSetValuetoDD = (
+    docType,
+    OrgDocId,
+    iScanDocIds,
+    Confident_Score
+  ) => {
+    let docType_ = docType;
+    if (!docType) docType = "miscellaneous";
+    if (Confident_Score === undefined) Confident_Score = "";
     if (OrgDocId === undefined) return;
     let UploadedDocTypeId = 0;
+    if (iScanDocIds !== undefined) setUpdateMappingonlyonNew(true);
 
     if (docType !== undefined && DocType !== "") {
       let Filterdoctype = DocType.filter((items) => {
@@ -903,11 +971,21 @@ function Form() {
         );
       });
 
+      if (Filterdoctype.length === 0) {
+        Filterdoctype = DocType.filter((items) => {
+          return (
+            items.DocType.toString().replaceAll(" ", "").toLowerCase() ===
+            "miscellaneous"
+          );
+        });
+      }
+
       if (Filterdoctype.length > 0) {
         setDocTypeValue(Filterdoctype[0].Id);
+        // setOrgDocTypeValue(Filterdoctype[0].Id);
         // debugger;
         if (DocTypeValue !== 169)
-          fnGetDocTypeDBField(Filterdoctype[0].Id, scandocId, 1);
+          fnGetDocTypeDBField(Filterdoctype[0].Id, iScanDocIds || scandocId, 1);
         setCategory(Filterdoctype[0].CategoryType);
         setEntityTypeId(Filterdoctype[0].iEntityType);
         setDescription(Filterdoctype[0].DocType);
@@ -925,6 +1003,8 @@ function Form() {
         );
         //  console.log(FilterDoc);
         if (FilterDoc.length > 0) {
+          if (Number(FilterDoc[0].DocTypeId) === Number(169))
+            setIncomeCalcProgres(true);
           handleActivedropzone(
             {
               ...activeDropzone,
@@ -932,16 +1012,24 @@ function Form() {
             },
             1
           );
+
+          document.querySelector("#spnConfidenceScore").innerHTML =
+            "<label>Confidence Score : </label>" + " " + Confident_Score ||
+            "" + " | " + "<label>DocType : </label>" + " " + docType_;
+
+          // setConfidenceScoreDetails(
+          //   document.querySelector("#spnConfidenceScore").innerHTML
+          // );
         }
       }
     }
-    fnPageload(LoanId, userId, userType, 1, UploadedDocTypeId);
+    fnPageload(LoanId, userId, userType, 1, UploadedDocTypeId, iScanDocIds);
   };
 
   function fnGetLeaderLineSetup(obj) {
     // debugger;
 
-    if (obj) {
+    if (obj || obj !== {}) {
       setResJSON(obj);
       let ele = [],
         PdfEle = Array.from(document.querySelectorAll(".textLayer span")),
@@ -1004,8 +1092,8 @@ function Form() {
               ? scandocId
               : uploadedDocDetails["ScanDocId"],
           docTypeId: DocTypeValue,
-          Descript: description,
-          Category: category,
+          Descript: "Test",
+          Category: 1,
           UseDoc: uploadedDocDetails.UseDoc,
         },
       })
@@ -1027,6 +1115,26 @@ function Form() {
     }
   }
 
+  function fnCheckFeedbackJSON(docType) {
+    let validateJSON = true;
+
+    if (Number(docType) !== Number(169)) {
+      if (JSON.stringify(OrgDocDbFields) === JSON.stringify(DocDbFields))
+        validateJSON = false;
+    } else {
+      let ParsedJson = OriginalResJSON;
+      if (OriginalResJSON.indexOf("extraction_json") > -1)
+        ParsedJson = JSON.parse(OriginalResJSON)["extraction_json"] ?? {};
+      else ParsedJson = JSON.parse(OriginalResJSON);
+      if (JSON.stringify(ParsedJson) === JSON.stringify(ResJSON))
+        validateJSON = false;
+    }
+
+    if (Number(OrgDocTypeValue) !== Number(docType)) validateJSON = true;
+
+    return validateJSON;
+  }
+
   function fnValidationCheckbeforeSave() {
     let IsValidated = true;
 
@@ -1042,10 +1150,11 @@ function Form() {
     return IsValidated;
   }
 
-  function fnCheckBorrEntityExistsValidation() {
-    debugger;
+  function fnCheckBorrEntityExistsValidation(flag, ParsedJson) {
+    // debugger;
     let FilterJSON = {};
-    FilterJSON = JSON.stringify(ResJSON);
+    if (flag === 1) FilterJSON = JSON.stringify(ParsedJson);
+    else FilterJSON = JSON.stringify(ResJSON);
 
     handleAPI({
       name: "EntityBorrCheckValidation",
@@ -1104,45 +1213,83 @@ function Form() {
   //     }
   //   }
   // }, [ResJSON]);
-  function handleActivedropzone(activeDropzone, flag) {
+  function handleActivedropzone(activeDropzone, flag, iuploadedDocument) {
+    debugger;
     if (flag === 1) activeDropzone.PreventScroll = true;
-    else activeDropzone.PreventScroll = false;
+    else {
+      activeDropzone.PreventScroll = false;
+      setFeedBackCollection(false);
+    }
     setActiveDropzone(activeDropzone);
     let activeScandocId = uploadedDocument.filter(
       (item) =>
         item.ID === activeDropzone.Id &&
         item.DocTypeId === activeDropzone.DocTypeId
     );
+
+    if (flag === 1 && iuploadedDocument !== undefined) {
+      activeScandocId = iuploadedDocument.filter(
+        (item) =>
+          item.ID === activeDropzone.Id &&
+          item.DocTypeId === activeDropzone.DocTypeId
+      );
+    }
+
     // console.log(activeScandocId);
     // debugger;
     if (activeScandocId.length > 0) {
       activeScandocId = activeScandocId[0].ScanDocId || 0;
       if (activeScandocId !== 0)
-        handleDocumentUploadChange(activeScandocId, flag);
+        handleDocumentUploadChange(activeScandocId, flag, iuploadedDocument);
       setShowTools(1);
 
       let UploadedMonthlyIncome = uploadedDocument.filter(
         (item) => item.ScanDocId == activeScandocId
       );
+      if (flag === 1 && iuploadedDocument !== undefined) {
+        UploadedMonthlyIncome = iuploadedDocument.filter(
+          (item) => item.ScanDocId == activeScandocId
+        );
+      }
       setScandocId(activeScandocId);
       console.log(ResJSON);
 
-      if (document.getElementById("spnMonthlyIncomeMain") != null) {
-        document.getElementById("spnMonthlyIncomeMain").innerHTML =
-          UploadedMonthlyIncome[0]?.IncomeDetails || "";
-      }
+      if (activeDropzone.DocTypeId === 169)
+        if (document.getElementById("spnMonthlyIncomeMain") != null) {
+          document.getElementById("spnMonthlyIncomeMain").innerHTML =
+            UploadedMonthlyIncome[0]?.IncomeDetails || "";
+        }
 
       setTimeout(() => {
-        if (UploadedMonthlyIncome[0].Confident_Score !== undefined) {
-          if (UploadedMonthlyIncome[0].Confident_Score === 0)
-            UploadedMonthlyIncome[0].Confident_Score = "";
-          if (document.querySelector("#spnConfidenceScore") !== null)
-            document.querySelector("#spnConfidenceScore").innerHTML =
-              " " + UploadedMonthlyIncome[0].Confident_Score + " | ";
+        UploadedMonthlyIncome = uploadedDocument.filter(
+          (item) => item.ScanDocId == activeScandocId
+        );
+
+        if (flag === 1 && iuploadedDocument !== undefined) {
+          UploadedMonthlyIncome = iuploadedDocument.filter(
+            (item) => item.ScanDocId == activeScandocId
+          );
         }
-      }, 100);
+        // if (
+        //   UploadedMonthlyIncome[0].Confident_Score !== undefined &&
+        //   UploadedMonthlyIncome[0].Confident_Score !== ""
+        // ) {
+        if (UploadedMonthlyIncome[0].Confident_Score === 0)
+          UploadedMonthlyIncome[0].Confident_Score = "";
+        if (document.querySelector("#spnConfidenceScore") !== null)
+          document.querySelector("#spnConfidenceScore").innerHTML =
+            "<label>Confidence Score : </label> " +
+            " " +
+            UploadedMonthlyIncome[0].Confident_Score +
+            " | " +
+            "<label>DocType : </label>" +
+            " " +
+            UploadedMonthlyIncome[0].Classified_Doctype;
+        // }
+      }, 1000);
 
       setDocTypeValue(activeDropzone.DocTypeId);
+      setOrgDocTypeValue(activeDropzone.DocTypeId);
       if (activeDropzone.DocTypeId !== 169)
         fnGetDocTypeDBField(activeDropzone.DocTypeId, activeScandocId);
       // debugger;
@@ -1163,23 +1310,47 @@ function Form() {
       setFile(null);
       setResJSON({});
       setShowTools(0);
+      setOriginalResJSON("");
       // uploadedDocDetails["ScanDocId"] = "";
       // uploadedDocDetails.PassedValidation = 0;
     }
   }
-  // useEffect(() => {
-  //   // console.log("UploadedDocValue", UploadedDocValue);
-  //   if (UploadedDocValue !== 0) handleDocumentUploadChange(UploadedDocValue);
-  // }, [activeDropzone]);
+  useEffect(() => {
+    console.log("ResJSON", ResJSON);
+  }, [ResJSON]);
 
-  const handleDocumentUploadChange = (value, flag) => {
-    if (
-      value == 0 &&
-      document.querySelector(".react-tabs__tab.react-tabs__tab--selected")
-        .innerText === "Documents Uploaded"
-    ) {
-      document.getElementById("spnMonthlyIncomeMain").innerHTML = "";
+  useEffect(() => {
+    // console.log("ResJSON", ResJSON);
+    if (UpdateMappingonlyonNew) {
+      // setTimeout(() => {
+      fnMapExtractionJsonField(DocTypeValue);
+      setUpdateMappingonlyonNew(false);
     }
+    // }, 500);
+  }, [UpdateMappingonlyonNew]);
+
+  useEffect(() => {
+    // console.log("ResJSON", ResJSON);
+    if (UpdateMappingonlyonNew) {
+      // setTimeout(() => {
+      fnMapExtractionJsonField(DocTypeValue);
+      setUpdateMappingonlyonNew(false);
+    }
+    // }, 500);
+  }, [OriginalResJSON, DocDbFields]);
+  // useEffect(() => {
+  //   console.log("DocTypeValue", DocTypeValue);
+  //   fnMapExtractionJsonField(DocTypeValue);
+  // }, [OriginalResJSON]);
+
+  const handleDocumentUploadChange = (value, flag, iuploadedDocument) => {
+    // if (
+    //   value == 0 &&
+    //   document.querySelector(".react-tabs__tab.react-tabs__tab--selected")
+    //     .innerText === "Documents Uploaded"
+    // ) {
+    //   document.getElementById("spnMonthlyIncomeMain").innerHTML = "";
+    // }
     if (value === undefined) value = UploadedDocValue;
     // console.log("value =", value);
 
@@ -1189,6 +1360,12 @@ function Form() {
       checkedIndex = uploadedDocument.filter(
         (e) => Number(e["ScanDocId"]) === Number(value)
       );
+
+    if (checkedIndex.length === 0 && iuploadedDocument !== undefined) {
+      checkedIndex = iuploadedDocument.filter(
+        (e) => Number(e["ScanDocId"]) === Number(value)
+      );
+    }
     if (checkedIndex && Number(value) !== 0) {
       checkedIndex = checkedIndex[0];
       if (
@@ -1198,18 +1375,39 @@ function Form() {
         isChecked = "1";
       }
     }
-    if (checkedIndex.Confident_Score !== undefined) {
-      if (checkedIndex.Confident_Score === 0) checkedIndex.Confident_Score = "";
+    // if (
+    //   checkedIndex.Confident_Score !== undefined &&
+    //   checkedIndex.Confident_Score !== ""
+    // ) {
+    if (checkedIndex.Confident_Score === 0) checkedIndex.Confident_Score = "";
+    setTimeout(() => {
       if (document.querySelector("#spnConfidenceScore") !== null)
         document.querySelector("#spnConfidenceScore").innerHTML =
-          " " + checkedIndex.Confident_Score;
-    }
+          "<label>Confidence Score : </label>" +
+          " " +
+          checkedIndex.Confident_Score +
+          " | " +
+          "<label>DocType : </label>" +
+          " " +
+          checkedIndex.Classified_Doctype;
+    }, 500);
+    // }
     // setIsUploadDocChecked(isChecked);
     setUploadedDocDetails(checkedIndex);
   };
 
+  function fndataformat(dateStr) {
+    const [year, month, day] = dateStr.split("-");
+    const formattedDate = `${month}/${day}/${year}`;
+
+    return formattedDate;
+  }
+
   function fnGetDocTypeDBField(value, iScanDocId, flag) {
-    if (Number(value) !== Number(169)) {
+    let ParsedJson_ = {};
+    if (OriginalResJSON !== "")
+      ParsedJson_ = JSON.parse(OriginalResJSON)["extraction_json"];
+    if (Number(value) !== Number(169) || ParsedJson_ === null) {
       setResJSON({});
 
       handleAPI({
@@ -1228,12 +1426,17 @@ function Form() {
               : [];
           // setDocDbFields([...DocDbFields, ...DocDbFields_]);
           setDocDbFields(DocDbFields_);
+          setOrgDocDbFields(DocDbFields_);
           if (DocDbFields_.length > 0) {
             setAssetTypeOptionValue(
               DocDbFields_.filter(
                 (item) => item.DisplayName === "Type of Account"
               )[0].Value.split(", ")
             );
+            setUpdateMappingonlyonNew(true);
+            // setTimeout(() => {
+            // fnMapExtractionJsonField(value);
+            // }, 4000);
           }
 
           // setModalOpen(true);
@@ -1246,8 +1449,9 @@ function Form() {
     if (Number(value) === Number(169) && flag !== 1) {
       debugger;
       setDocDbFields([]);
+      setOrgDocDbFields([]);
       if (OriginalResJSON !== "") {
-        let ParsedJson = JSON.parse(OriginalResJSON)["business_logic_json"];
+        let ParsedJson = JSON.parse(OriginalResJSON)["extraction_json"] ?? {};
         // setResJSON({ ...{}, ...ParsedJson });
         setResJSON(ParsedJson);
         setDocTypeValue(169);
@@ -1304,11 +1508,60 @@ function Form() {
   //     });
   // }
 
+  function fnMapExtractionJsonField(doctypeId) {
+    if (OriginalResJSON) {
+      let ParsedJson;
+      if (OriginalResJSON.indexOf("extraction_json") > -1)
+        ParsedJson = JSON.parse(OriginalResJSON)["extraction_json"] ?? {};
+
+      if (
+        ParsedJson.financial_institution !== undefined &&
+        Number(doctypeId) === Number(43)
+      ) {
+        console.log(ParsedJson);
+        DocDbFields.forEach((item) => {
+          if (Number(item.Dbfieldid) === Number(3058))
+            item.Value = ParsedJson.financial_institution || "";
+
+          if (Number(item.Dbfieldid) === Number(8386))
+            item.Value = fndataformat(ParsedJson.beginning_date) || "";
+
+          if (Number(item.Dbfieldid) === Number(8387))
+            item.Value = fndataformat(ParsedJson.ending_date) || "";
+
+          if (Number(item.Dbfieldid) === Number(3052))
+            item.Value = ParsedJson.account_holder[0] || "";
+
+          if (Number(item.Dbfieldid) === Number(3061))
+            item.Value = ParsedJson.account_number[0] || "";
+
+          if (Number(item.Dbfieldid) === Number(3062))
+            item.Value = ParsedJson.current_balance[0] || "";
+
+          if (Number(item.Dbfieldid) === Number(8388))
+            item.Value =
+              ParsedJson.qualifying_balance[0] ||
+              ParsedJson.qualifying_balance ||
+              "";
+          if (Number(item.Dbfieldid) === Number(3059)) {
+            const typeAcc = ParsedJson.account_type.join(", ");
+            // item.Value = [typeAcc];
+
+            // setAssetTypeOptionValue(typeAcc);
+
+            setAssetTypeOptionValue(typeAcc.split(", "));
+            console.log(typeAcc);
+          }
+        });
+
+        setDocDbFields(DocDbFields);
+        setUpdateMappingonlyonNew(false);
+      }
+    }
+  }
+
   function fnSendFeedbacktoAPI() {
     // debugger;
-    var myHeaders = new Headers();
-    myHeaders.append("x-api-key", "9cQKFT3dYKrOnF8CEDKO4DTaSKxrHUD4JK8f3tT3");
-    myHeaders.append("Content-Type", "application/json");
     let docType = DocType.filter(
         (items) =>
           parseInt(items.Id) === parseInt(Details["DocType"] || DocTypeValue)
@@ -1317,99 +1570,111 @@ function Form() {
       file_ = file,
       fileName = "";
 
-    // if (typeof file === "string") {
-    //   fileName = file.split("PDF/")[1];
-    //   file_ = await convertUrlToFile(file, fileName)
-    //     .then((file) => {
-    //       // Use the file as needed
-    //       console.log(file);
-    //       return file;
-    //     })
-    //     .catch((error) => {
-    //       console.error("Error converting URL to file:", error);
-    //     });
-    // } else fileName = file.name || "";
+    if (
+      fnCheckFeedbackJSON(Details["DocType"] || DocTypeValue) ||
+      FeedBackCollection
+    ) {
+      var myHeaders = new Headers();
+      myHeaders.append("x-api-key", "9cQKFT3dYKrOnF8CEDKO4DTaSKxrHUD4JK8f3tT3");
+      myHeaders.append("Content-Type", "application/json");
 
-    let UploadedMonthlyIncome = uploadedDocument.filter(
-      (item) => item.ScanDocId == scandocId
-    );
-    console.log("UP", UploadedMonthlyIncome[0].Task_Id);
-    // return;
-    originalData = {
-      doc_type: docType[0].DocType,
-      task_id:
-        docType[0].DocType === "Pay Stub"
-          ? JSON.parse(OriginalResJSON)["task_id"]
-          : UploadedMonthlyIncome[0].Task_Id,
-      ...(docType[0].DocType === "Pay Stub"
-        ? ResJSON
-        : DocDbFields.reduce((result, item) => {
-            result[item.DisplayName] = item.Value;
-            return result;
-          }, {})),
-    };
+      // if (typeof file === "string") {
+      //   fileName = file.split("PDF/")[1];
+      //   file_ = await convertUrlToFile(file, fileName)
+      //     .then((file) => {
+      //       // Use the file as needed
+      //       console.log(file);
+      //       return file;
+      //     })
+      //     .catch((error) => {
+      //       console.error("Error converting URL to file:", error);
+      //     });
+      // } else fileName = file.name || "";
+      setFeedBackCollection(false);
+      let UploadedMonthlyIncome = uploadedDocument.filter(
+        (item) => item.ScanDocId == scandocId
+      );
+      console.log("UP", UploadedMonthlyIncome[0].Task_Id);
+      // return;
+      originalData = {
+        doc_type: docType[0].DocType,
+        // task_id:
+        //   docType[0].DocType === "Pay Stub"
+        //     ? JSON.parse(OriginalResJSON)["task_id"]
+        //     : UploadedMonthlyIncome[0].Task_Id,
+        ...(docType[0].DocType === "Pay Stub"
+          ? ResJSON
+          : DocDbFields.reduce((result, item) => {
+              result[item.DisplayName] = item.Value;
+              return result;
+            }, {})),
+      };
 
-    // let formdata = new FormData();
-    // formdata.append("file", file);
-    // formdata.append("json_data", JSON.stringify(originalData));
-    // originalData = Object.fromEntries(
-    //   Object.entries(originalData).map(([key, value]) => [
-    //     key.replace(/\s/g, ""),
-    //     value,
-    //   ])
-    // );
+      // let formdata = new FormData();
+      // formdata.append("file", file);
+      // formdata.append("json_data", JSON.stringify(originalData));
+      // originalData = Object.fromEntries(
+      //   Object.entries(originalData).map(([key, value]) => [
+      //     key.replace(/\s/g, ""),
+      //     value,
+      //   ])
+      // );
 
-    console.log("file=====>", file);
-    console.log("=====>", JSON.stringify(originalData));
-    // return;
+      console.log("file=====>", file);
+      console.log("=====>", JSON.stringify(originalData));
+      // return;
 
-    // let raw = {}; //JSON.stringify({
-    //   task_id: "2023-04-26-07-37-42-dbe77e0b-0fe2-4a19-9317-12d23ba35d90",
-    //   doc_type: "Paystub",
-    //   "Name of Employer": "University of Utah",
-    //   "Which Borrower": "RICARDO FEO CARDOSO",
-    //   "Paid From Date": "12/01/2021",
-    //   "Paid To Date": "12/15/2021",
-    //   "Pay Frequency": "Biweekly",
-    //   "Gross Pay": "$8,369.29",
-    //   "YTD Earnings": "$131,789.84",
-    //   "Hours Worked Per Week": "Unknown",
-    // });
-    // raw = JSON.stringify(originalData);
-    let requestOptions = {
-      method: "POST",
-      headers: myHeaders,
-      // body: formdata,
-      redirect: "follow",
-      crossDomain: true,
-    };
+      // let raw = {}; //JSON.stringify({
+      //   task_id: "2023-04-26-07-37-42-dbe77e0b-0fe2-4a19-9317-12d23ba35d90",
+      //   doc_type: "Paystub",
+      //   "Name of Employer": "University of Utah",
+      //   "Which Borrower": "RICARDO FEO CARDOSO",
+      //   "Paid From Date": "12/01/2021",
+      //   "Paid To Date": "12/15/2021",
+      //   "Pay Frequency": "Biweekly",
+      //   "Gross Pay": "$8,369.29",
+      //   "YTD Earnings": "$131,789.84",
+      //   "Hours Worked Per Week": "Unknown",
+      // });
+      // raw = JSON.stringify(originalData);
+      let requestOptions = {
+        method: "POST",
+        headers: myHeaders,
+        // body: formdata,
+        redirect: "follow",
+        crossDomain: true,
+      };
 
-    fetch(
-      "https://www.solutioncenter.biz/LoginCredentialsAPI/api/SendFeedbacktoAPI?LoanId=" +
-        LoanId +
-        "&JSONInput=" +
-        JSON.stringify(originalData)
-          .replace("#", "")
-          .replace("?", "")
-          .replace("%", "") +
-        "&ScandocId=" +
-        scandocId +
-        "&SessionId=" +
-        SessionId,
-      requestOptions
-    )
-      .then((response) => response.json())
-      .then((result) => {
-        //    console.log(result);
-        handleFooterMsg(JSON.parse(result)["message"]);
-        // document.getElementById("spnResubmitdiv").style.display = "none";
-        // document.getElementById("ResubmitProgress").style.display = "none";
-      })
-      .catch((error) => {
-        console.log("error", error);
-        // document.getElementById("spnResubmitdiv").style.display = "none";
-        // document.getElementById("ResubmitProgress").style.display = "none";
-      });
+      fetch(
+        "https://www.solutioncenter.biz/LoginCredentialsAPI/api/SendFeedbacktoAPI?LoanId=" +
+          LoanId +
+          "&JSONInput=" +
+          JSON.stringify(originalData)
+            .replace("#", "")
+            .replace("?", "")
+            .replace("%", "") +
+          "&ScandocId=" +
+          scandocId +
+          "&SessionId=" +
+          SessionId +
+          "&IsIgnored=false" +
+          "&doc_type=" +
+          docType[0].DocType,
+        requestOptions
+      )
+        .then((response) => response.json())
+        .then((result) => {
+          //    console.log(result);
+          handleFooterMsg(JSON.parse(result)["message"]);
+          // document.getElementById("spnResubmitdiv").style.display = "none";
+          // document.getElementById("ResubmitProgress").style.display = "none";
+        })
+        .catch((error) => {
+          console.log("error", error);
+          // document.getElementById("spnResubmitdiv").style.display = "none";
+          // document.getElementById("ResubmitProgress").style.display = "none";
+        });
+    }
   }
   const handleFooterMsg = (msg) => {
     document.getElementById("spnSaveStatus").innerHTML = msg;
@@ -1472,154 +1737,158 @@ function Form() {
           className="col-xs-12 col-sm-12 col-md-3 col-lg-3 ContainerBorder"
           style={{ padding: " 10px 4px", zIndex: 999 }}
         >
-          {
-            /* Form fields for column 1 */
-            <div>
-              <Tabs>
-                <TabList>
-                  <Tab>Documents Needed</Tab>
-                  <Tab>Documents Uploaded</Tab>
-                </TabList>
-                <TabPanel>
-                  <DropZone
-                    typeId="1"
-                    label="Upload any document and we'll recognize it for you."
-                    handleSetFile={handleSetFile}
-                    fnGetLeaderLineSetup={fnGetLeaderLineSetup}
-                    setOriginalResJSON={setOriginalResJSON}
-                    LoanId={LoanId || 0}
-                    SessionId={SessionId || ""}
-                    {...{
-                      DocTypeId: "269",
-                      Category: "3",
-                      LongDesc: "Miscellaneous",
-                      ShortName: "Miscellaneous",
-                      ID: "-99",
-                      EntityId: "0",
-                      EntityTypeId: "1",
-                    }}
-                    setEnableSave={setEnableSave}
-                    handleSetValuetoDD={handleSetValuetoDD}
-                    setConditionalModalOpen={setConditionalModalOpen}
-                    setScandocId={setScandocId}
-                    handleActivedropzone={handleActivedropzone}
-                    activeDropzone={activeDropzone}
-                    setExtractResult={setExtractResult}
-                    setWhichProcessMsg={setWhichProcessMsg}
-                    setOpenMsg={setOpenMsg}
-                    setDocCheck={setDocCheck}
-                    setDocTypeValue={setDocTypeValue}
-                    setDocDbFields={setDocDbFields}
-                    setFieldExtractProgres={setFieldExtractProgres}
-                    setTaskId={setTaskId}
-                    setActiveDropzone={setActiveDropzone}
-                  />
-                  <div
-                    id="divDropZoneWrapper"
-                    style={{
-                      maxHeight: "68vh",
-                      overflowY: "auto",
-                      overflowX: "hidden",
-                    }}
-                  >
-                    {DocDetails.filter(
-                      (e) =>
-                        e.PassedValidation === 0 ||
-                        e.PassedValidation === undefined
-                    )
-                      .filter(
-                        (
-                          (s) => (o) =>
-                            ((k) => !s.has(k) && s.add(k))(
-                              ["ID", "DocTypeId"].map((k) => o[k]).join("|")
-                            )
-                        )(new Set())
-                      )
-                      .map((item, index) => {
-                        return (
-                          <DropZone
-                            typeId={item["DocTypeId"]}
-                            label={item["ShortName"]}
-                            handleSetFile={handleSetFile}
-                            fnGetLeaderLineSetup={fnGetLeaderLineSetup}
-                            {...item}
-                            key={index}
-                            setOriginalResJSON={setOriginalResJSON}
-                            LoanId={LoanId || 0}
-                            SessionId={SessionId || ""}
-                            handleSetValuetoDD={handleSetValuetoDD}
-                            setEnableSave={setEnableSave}
-                            setConditionalModalOpen={setConditionalModalOpen}
-                            setConditionDetails={setConditionDetails}
-                            setScandocId={setScandocId}
-                            handleActivedropzone={handleActivedropzone}
-                            activeDropzone={activeDropzone}
-                            fnCheckConditionalRemainingModel={
-                              fnCheckConditionalRemainingModel
-                            }
-                            setExtractResult={setExtractResult}
-                            setWhichProcessMsg={setWhichProcessMsg}
-                            setOpenMsg={setOpenMsg}
-                            setDocCheck={setDocCheck}
-                            setDocTypeValue={setDocTypeValue}
-                            setDocDbFields={setDocDbFields}
-                            setFieldExtractProgres={setFieldExtractProgres}
-                            setTaskId={setTaskId}
-                            setActiveDropzone={setActiveDropzone}
-                          />
-                        );
-                      })}
-                    <div className="pagebottom">
-                      <span className="footertext">Column Bottom</span>
-                    </div>
-                  </div>
-                </TabPanel>
-                <TabPanel>
-                  <div
-                    id="divUploadedDropZoneWrapper"
-                    style={{ maxHeight: "68vh", overflowY: "auto" }}
-                  >
-                    {PassedDoc.filter((e) => e.PassedValidation === 1)
-                      // .filter(
-                      //   (
-                      //     (s) => (o) =>
-                      //       ((k) => !s.has(k) && s.add(k))(
-                      //         ["ID", "DocTypeId"].map((k) => o[k]).join("|")
-                      //       )
-                      //   )(new Set())
-                      // )
-                      .map((item, index) => {
-                        return (
-                          <DropZone
-                            typeId={item["DocTypeId"]}
-                            label={item["ShortName"]}
-                            handleSetFile={handleSetFile}
-                            fnGetLeaderLineSetup={fnGetLeaderLineSetup}
-                            {...item}
-                            key={index}
-                            setOriginalResJSON={setOriginalResJSON}
-                            LoanId={LoanId || 0}
-                            SessionId={SessionId || ""}
-                            handleSetValuetoDD={handleSetValuetoDD}
-                            setEnableSave={setEnableSave}
-                            setConditionalModalOpen={setConditionalModalOpen}
-                            setConditionDetails={setConditionDetails}
-                            setScandocId={setScandocId}
-                            setExtractResult={setExtractResult}
-                            handleActivedropzone={handleActivedropzone}
-                            activeDropzone={activeDropzone}
-                            fnCheckConditionalRemainingModel={
-                              fnCheckConditionalRemainingModel
-                            }
-                            setFieldExtractProgres={setFieldExtractProgres}
-                          />
-                        );
-                      })}
-                  </div>
-                </TabPanel>
-              </Tabs>
-            </div>
-          }
+          <Tabs>
+            <TabList>
+              <Tab>Documents Needed</Tab>
+              <Tab>Documents Uploaded</Tab>
+            </TabList>
+            <TabPanel>
+              <DropZone
+                typeId="1"
+                label="Upload any document and we'll recognize it for you."
+                handleSetFile={handleSetFile}
+                fnGetLeaderLineSetup={fnGetLeaderLineSetup}
+                setOriginalResJSON={setOriginalResJSON}
+                LoanId={LoanId || 0}
+                SessionId={SessionId || ""}
+                {...{
+                  DocTypeId: "269",
+                  Category: "3",
+                  LongDesc: "Miscellaneous",
+                  ShortName: "Miscellaneous",
+                  ID: "-99",
+                  EntityId: "0",
+                  EntityTypeId: "1",
+                }}
+                setEnableSave={setEnableSave}
+                handleSetValuetoDD={handleSetValuetoDD}
+                setConditionalModalOpen={setConditionalModalOpen}
+                setScandocId={setScandocId}
+                handleActivedropzone={handleActivedropzone}
+                activeDropzone={activeDropzone}
+                setExtractResult={setExtractResult}
+                setWhichProcessMsg={setWhichProcessMsg}
+                setOpenMsg={setOpenMsg}
+                setDocCheck={setDocCheck}
+                setDocTypeValue={setDocTypeValue}
+                setDocDbFields={setDocDbFields}
+                setFieldExtractProgres={setFieldExtractProgres}
+                setTaskId={setTaskId}
+                setActiveDropzone={setActiveDropzone}
+                IncomeCalcProgres={IncomeCalcProgres}
+                fnCheckBorrEntityExistsValidation={
+                  fnCheckBorrEntityExistsValidation
+                }
+                setFeedBackCollection={setFeedBackCollection}
+              />
+              <div
+                id="divDropZoneWrapper"
+                style={{
+                  maxHeight: "68vh",
+                  overflowY: "auto",
+                  overflowX: "hidden",
+                }}
+              >
+                {DocDetails.filter(
+                  (e) =>
+                    e.PassedValidation === 0 || e.PassedValidation === undefined
+                )
+                  .filter(
+                    (
+                      (s) => (o) =>
+                        ((k) => !s.has(k) && s.add(k))(
+                          ["ID", "DocTypeId"].map((k) => o[k]).join("|")
+                        )
+                    )(new Set())
+                  )
+                  .map((item, index) => {
+                    return (
+                      <DropZone
+                        typeId={item["DocTypeId"]}
+                        label={item["ShortName"]}
+                        handleSetFile={handleSetFile}
+                        fnGetLeaderLineSetup={fnGetLeaderLineSetup}
+                        {...item}
+                        key={index}
+                        setOriginalResJSON={setOriginalResJSON}
+                        LoanId={LoanId || 0}
+                        SessionId={SessionId || ""}
+                        handleSetValuetoDD={handleSetValuetoDD}
+                        setEnableSave={setEnableSave}
+                        setConditionalModalOpen={setConditionalModalOpen}
+                        setConditionDetails={setConditionDetails}
+                        setScandocId={setScandocId}
+                        handleActivedropzone={handleActivedropzone}
+                        activeDropzone={activeDropzone}
+                        fnCheckConditionalRemainingModel={
+                          fnCheckConditionalRemainingModel
+                        }
+                        setExtractResult={setExtractResult}
+                        setWhichProcessMsg={setWhichProcessMsg}
+                        setOpenMsg={setOpenMsg}
+                        setDocCheck={setDocCheck}
+                        setDocTypeValue={setDocTypeValue}
+                        setDocDbFields={setDocDbFields}
+                        setFieldExtractProgres={setFieldExtractProgres}
+                        setTaskId={setTaskId}
+                        setActiveDropzone={setActiveDropzone}
+                        IncomeCalcProgres={IncomeCalcProgres}
+                        fnCheckBorrEntityExistsValidation={
+                          fnCheckBorrEntityExistsValidation
+                        }
+                        setFeedBackCollection={setFeedBackCollection}
+                      />
+                    );
+                  })}
+                <div className="pagebottom" style={{ marginBottom: 10 }}>
+                  <span className="footertext">Column Bottom</span>
+                </div>
+              </div>
+            </TabPanel>
+            <TabPanel>
+              <div
+                id="divUploadedDropZoneWrapper"
+                style={{ maxHeight: "68vh", overflowY: "auto" }}
+              >
+                {PassedDoc.filter((e) => e.PassedValidation === 1)
+                  // .filter(
+                  //   (
+                  //     (s) => (o) =>
+                  //       ((k) => !s.has(k) && s.add(k))(
+                  //         ["ID", "DocTypeId"].map((k) => o[k]).join("|")
+                  //       )
+                  //   )(new Set())
+                  // )
+                  .map((item, index) => {
+                    return (
+                      <DropZone
+                        typeId={item["DocTypeId"]}
+                        label={item["ShortName"]}
+                        handleSetFile={handleSetFile}
+                        fnGetLeaderLineSetup={fnGetLeaderLineSetup}
+                        {...item}
+                        key={index}
+                        setOriginalResJSON={setOriginalResJSON}
+                        LoanId={LoanId || 0}
+                        SessionId={SessionId || ""}
+                        handleSetValuetoDD={handleSetValuetoDD}
+                        setEnableSave={setEnableSave}
+                        setConditionalModalOpen={setConditionalModalOpen}
+                        setConditionDetails={setConditionDetails}
+                        setScandocId={setScandocId}
+                        setExtractResult={setExtractResult}
+                        handleActivedropzone={handleActivedropzone}
+                        activeDropzone={activeDropzone}
+                        fnCheckConditionalRemainingModel={
+                          fnCheckConditionalRemainingModel
+                        }
+                        setFieldExtractProgres={setFieldExtractProgres}
+                      />
+                    );
+                  })}
+              </div>
+            </TabPanel>
+          </Tabs>
         </div>
         <div
           className="col-xs-12 col-sm-12 col-md-6 col-lg-6 ContainerBorder"
@@ -1771,7 +2040,15 @@ function Form() {
             <div>
               <Tabs>
                 <TabList>
-                  <Tab>Fields</Tab>
+                  <Tab
+                    onClick={() =>
+                      setTimeout(() => {
+                        handleDocumentUploadChange(scandocId);
+                      }, 200)
+                    }
+                  >
+                    Fields
+                  </Tab>
                   <Tab>JSON</Tab>
                 </TabList>
                 <TabPanel style={{ overflow: "auto", height: "76vh" }}>
@@ -1790,7 +2067,7 @@ function Form() {
                   {file && (
                     <>
                       <div>
-                        <label>Confidence Score:</label>
+                        {/* <label>Confidence Score:</label> */}
                         <span id="spnConfidenceScore"></span>
                         {/* <span
                           id="spnResubmitdiv"
@@ -2109,6 +2386,8 @@ function Form() {
 
                               setDocDbFields([...[], ...DocDbFields_]);
 
+                              // setOrgDocDbFields([...[], ...DocDbFields_]);
+
                               // if (name === "Beginning Date")
                               //   value = convertToFourDigitYear(value);
                             }}
@@ -2129,6 +2408,7 @@ function Form() {
                                 DocDbFields_[index]["Value"] = formattedValue;
 
                                 setDocDbFields([...[], ...DocDbFields_]);
+                                // setOrgDocDbFields([...[], ...DocDbFields_]);
                               }
                               setEnableSave(true);
                             }}
@@ -2147,7 +2427,7 @@ function Form() {
                         )}
                       </>
                     ))}
-                  {Object.keys(ResJSON).length > 0 ? (
+                  {Object.keys(ResJSON).length > 0 || file ? (
                     <div className="pagebottom">
                       <span className="footertext">Column Bottom</span>
                     </div>
@@ -2168,12 +2448,12 @@ function Form() {
                       </span>
                     </div>
                   )}
-                  {Object.keys(ResJSON).length > 0 ? (
+                  {(OriginalResponsefromAPI || OriginalResJSON) && (
                     <div>
-                      <pre>{OriginalResponsefromAPI || OriginalResJSON}</pre>
+                      <pre style={{ maxHeight: "78vh" }}>
+                        {OriginalResponsefromAPI || OriginalResJSON}
+                      </pre>
                     </div>
-                  ) : (
-                    <></>
                   )}
                 </TabPanel>
               </Tabs>
@@ -2215,7 +2495,9 @@ function Form() {
                       //   "",
                       //   "width=1200,height=1200,resizable=yes,scrollbars=yes"
                       // );
-                      openNewWindow(`/AgGrid?LoanId=${LoanId}`);
+                      openNewWindow(
+                        `/AgGrid?LoanId=${LoanId}&SessionId=${SessionId}`
+                      );
                       // console.log("FeedBack");
                     },
                   },
@@ -2389,7 +2671,7 @@ function Form() {
               className={`btn ${EnableSave ? "btn-primary" : "btnDisable"}`}
               disabled={!EnableSave}
               onClick={() => {
-                if (DocTypeValue !== 169) fnSaveOtherDBField();
+                if (Number(DocTypeValue) !== 169) fnSaveOtherDBField();
                 else fnCheckBorrEntityExistsValidation();
               }}
             >

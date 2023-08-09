@@ -40,6 +40,9 @@ function DropZone(props) {
     setFieldExtractProgres,
     setTaskId,
     setActiveDropzone,
+    IncomeCalcProgres,
+    fnCheckBorrEntityExistsValidation,
+    setFeedBackCollection,
   } = props;
   // console.log("Props", props);
   const [ExtractProgres, setExtractProgres] = useState(false);
@@ -88,7 +91,7 @@ function DropZone(props) {
       () => {
         // console.log(reader.result);
         handleSetFile(file);
-
+        setFeedBackCollection(true);
         var formdata = new FormData();
 
         formdata.append("", fileInfo);
@@ -127,33 +130,68 @@ function DropZone(props) {
             let getScandocId = result.split("~")[1];
             if (
               getScandocId === undefined ||
-              result?.toString().indexOf("business_logic_json") === -1
+              // result?.toString().indexOf("business_logic_json") === -1
+              result?.toString().indexOf("extraction_json") === -1 ||
+              JSON.parse(result.split("~")[0]).extraction_json === null
             ) {
               setExtractProgres(false);
               setFieldExtractProgres(false);
               setExtractResult(result);
               setOriginalResJSON("");
               setScandocId(getScandocId);
-              fnPdfclassification(file, getScandocId, requestOptions);
+              // fnPdfclassification(file, getScandocId, requestOptions);
+              setWhichProcessMsg(0);
+              setDocCheck(
+                JSON.parse(result.split("~")[0]).doc_type || "Miscellaneous"
+              );
+              setOpenMsg(true);
+              setTaskId(JSON.parse(result.split("~")[0]).task_id);
+
+              let Confident_Score = JSON.parse(
+                result.split("~")[0]
+              ).doc_type_confidence_score;
+              props.handleSetValuetoDD(
+                JSON.parse(result.split("~")[0])["doc_type"],
+                props.DocTypeId,
+                getScandocId,
+                Confident_Score || ""
+              );
+
               fnGetLeaderLineSetup({});
+              setOriginalResJSON(result.split("~")[0]);
+
               return;
             }
             // console.log("ScandocId", getScandocId);
             setExtractResult("");
             setScandocId(getScandocId);
+            let IsSaved = 1;
+            if (result.split("~")[2] !== undefined)
+              IsSaved = result.split("~")[2];
+
             result = result.split("~")[0];
-            let ParsedJson = JSON.parse(result)["business_logic_json"];
+            // let ParsedJson = JSON.parse(result)["business_logic_json"];
+            let ParsedJson = JSON.parse(result)["extraction_json"];
             console.log(ParsedJson);
             fnGetLeaderLineSetup(ParsedJson);
             setOriginalResJSON(result);
 
-            setEnableSave(true);
             props.handleSetValuetoDD(
               JSON.parse(result)["doc_type"],
-              props.DocTypeId
+              props.DocTypeId,
+              getScandocId
             );
             setExtractProgres(false);
             setFieldExtractProgres(false);
+
+            if (Number(IsSaved) !== 1) {
+              setEnableSave(true);
+              if (JSON.parse(result)["doc_type"].toLowerCase() === "paystub")
+                setTimeout(() => {
+                  fnCheckBorrEntityExistsValidation(1, ParsedJson);
+                }, 10);
+            } else setEnableSave(false);
+
             // fndrawfield();
           })
           .catch((error) => console.log("error", error));
@@ -310,7 +348,7 @@ function DropZone(props) {
             //   e.target.style = "backgroundColor: yellow";
             // }}
           >
-            {Number(props.DocTypeId) !== 269 ? (
+            {Number(typeId) !== 1 ? (
               <Stack spacing={2} direction="row">
                 <Button
                   size="small"
@@ -385,6 +423,20 @@ function DropZone(props) {
                 </Stack>
                 {props.DocTypeId === 169 ? (
                   <>
+                    {IncomeCalcProgres && (
+                      <div>
+                        <CircularProgress
+                          size={15}
+                          style={{ margin: "0px 5px 0px 15px" }}
+                        />
+                        <span
+                          style={{ verticalAlign: "top", fontSize: "12px" }}
+                        >
+                          {" "}
+                          Income Calculating...
+                        </span>
+                      </div>
+                    )}
                     <span id="spnMonthlyIncomeMain"></span>
                     {/* <span
                       id="spnMonthlyIncome"

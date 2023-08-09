@@ -32,7 +32,9 @@ export default function CustomizedSnackbars(props) {
           severity="success"
           sx={{ width: "100%", fontSize: "13px" }}
         >
-          {Number(props.WhichProcessMsg) === 1
+          {Number(props.WhichProcessMsg) === -99
+            ? props.RespMsg
+            : Number(props.WhichProcessMsg) === 1
             ? `This image has been processed and is now moved to the Documents Uploaded tab.`
             : `This document is recognized as ${
                 props.DocCheck
