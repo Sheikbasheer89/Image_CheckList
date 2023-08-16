@@ -32,7 +32,7 @@ import MenuOptions from "./MenuOption";
 
 import CustomizedSnackbars from "./MessageComponents";
 import ConditionalRemainingCompleteModel from "./ConditionRemainingCompleted";
-import { Unarchive } from "@mui/icons-material";
+import { CurrencyExchange, Unarchive } from "@mui/icons-material";
 import ChangeLog from "./ChangeLog";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
@@ -162,6 +162,8 @@ function Form() {
 
   const [UpdateMappingonlyonNew, setUpdateMappingonlyonNew] = useState(false);
 
+  const [MultipleProgressbar, setMultipleProgressbar] = useState([]);
+
   function fnCheckConditionalRemainingModel() {
     setConditionalRemainingModel(true);
   }
@@ -172,24 +174,41 @@ function Form() {
     // console.log(val_);
   };
 
-  function fnSaveOtherDBField() {
+  function fnSaveOtherDBField(flag, _DocDbFields) {
+    if (Number(DocTypeValue) === 43 && flag !== 1) {
+      let DocDBField_ = DocDbFields.filter(
+        (item) => item.DisplayName === "Which Borrower"
+      );
+      let Parsed_ = {};
+      Parsed_["Which Borrower"] = DocDBField_[0].Value;
+      Parsed_["Name of Employer"] = "";
+
+      fnCheckBorrEntityExistsValidation(2, Parsed_);
+      return;
+    }
+    setModalOpen(false);
+    let DocDbFields__ = DocDbFields;
+    if (flag === 1 && _DocDbFields !== undefined) DocDbFields__ = _DocDbFields;
     let val_ = AssetTypeOPtions.filter((item) => {
       return AssetTypeOptionValue.indexOf(item["TypeDesc"]) !== -1;
       // return val.indexOf(item["TypeDesc"]) !== -1;
     });
     val_ = val_.map((e) => e.TypeOption).join(",");
 
+    let RespOrg = fnUpdateOriginalJSON();
+
     handleAPI({
       name: "SaveDBFieldFromAPI",
       params: {
         LoanId: LoanId,
-        InputJSON: JSON.stringify(DocDbFields)
+        InputJSON: JSON.stringify(DocDbFields__)
           .replace("#", "")
           .replace("?", "")
           .replace("%", ""),
         AssetTypeOptions: val_,
         ScandocId: scandocId,
         DocTypeId: DocTypeValue,
+        OriginalJSON: RespOrg.replace(/undefined\//g, ""),
       },
     })
       .then((response) => {
@@ -197,7 +216,7 @@ function Form() {
         console.log(activeDropzone);
         handleFooterMsg("Saved Successfully.");
         setEnableSave(false);
-        fnSendFeedbacktoAPI();
+        fnSendFeedbacktoAPI(DocDbFields__);
 
         fnRunImageValidation(1);
 
@@ -353,36 +372,52 @@ function Form() {
     }
   }, [ConditionalRemainingModel]);
 
-  const formatCurrency = (value, decPlaces) => {
+  const formatCurrency = (value) => {
     let num = value.toString().replace("$", "").replace(",", ""),
-      multiplier = Math.pow(10, decPlaces),
-      rounder = 50 / multiplier + 0.00000000001,
-      i = 0,
-      cents = num % multiplier,
+      numParts = num.split("."),
+      dollars = numParts[0],
+      cents = numParts[1] || "",
       sign = num == (num = Math.abs(num));
 
-    num = num.toString().replace(/\$|\,/g, "");
+    dollars = dollars.replace(/\$|\,/g, "");
 
-    if (isNaN(num)) num = "0";
+    if (isNaN(dollars)) dollars = "0";
 
-    if (isNaN(decPlaces)) num = "2";
+    dollars = dollars.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
-    num = Math.floor(num * multiplier + rounder);
-
-    num = Math.floor(num / multiplier).toString();
-
-    for (i = 1; i < decPlaces; i++) {
-      if (cents < Math.pow(10, i)) cents = "0" + cents;
-    }
-
-    for (i = 0; i < Math.floor((num.length - (1 + i)) / 3); i++)
-      num =
-        num.substring(0, num.length - (4 * i + 3)) +
-        "," +
-        num.substring(num.length - (4 * i + 3));
-
-    return "$" + ((sign ? "" : "-") + num);
+    return "$" + ((sign ? "" : "-") + dollars + (cents ? "." + cents : ""));
   };
+
+  // const formatCurrency = (value, decPlaces) => {
+  //   let num = value.toString().replace("$", "").replace(",", ""),
+  //     multiplier = Math.pow(10, decPlaces),
+  //     rounder = 50 / multiplier + 0.00000000001,
+  //     i = 0,
+  //     cents = num % multiplier,
+  //     sign = num == (num = Math.abs(num));
+
+  //   num = num.toString().replace(/\$|\,/g, "");
+
+  //   if (isNaN(num)) num = "0";
+
+  //   if (isNaN(decPlaces)) num = "2";
+
+  //   num = Math.floor(num * multiplier + rounder);
+
+  //   num = Math.floor(num / multiplier).toString();
+
+  //   for (i = 1; i < decPlaces; i++) {
+  //     if (cents < Math.pow(10, i)) cents = "0" + cents;
+  //   }
+
+  //   for (i = 0; i < Math.floor((num.length - (1 + i)) / 3); i++)
+  //     num =
+  //       num.substring(0, num.length - (4 * i + 3)) +
+  //       "," +
+  //       num.substring(num.length - (4 * i + 3));
+
+  //   return "$" + ((sign ? "" : "-") + num);
+  // };
 
   const handleFindFormToElements = (e, isDraw, value) => {
     if (value === "" || value === undefined) return false;
@@ -702,6 +737,7 @@ function Form() {
       div.style.maxHeight = tHeight - fDropZone - height - 25 + "px";
     }
   };
+
   function fnPageload(
     iLoanId,
     iUserId,
@@ -730,7 +766,18 @@ function Form() {
         if (response["Table"][0].Column2 === "")
           response["Table"][0].Column2 = "[]";
 
-        setAssetTypeOPtions(JSON.parse(response.Table2[0].Result));
+        let AssetOption1 = JSON.parse(response.Table2[0].Result).filter(
+          (item) =>
+            Number(item.TypeOption) === 1 || Number(item.TypeOption) === 2
+        );
+        let AssetOption2 = JSON.parse(response.Table2[0].Result).filter(
+          (item) =>
+            Number(item.TypeOption) !== 1 && Number(item.TypeOption) !== 2
+        );
+
+        let AssetOption = [...AssetOption1, ...AssetOption2];
+        setAssetTypeOPtions(AssetOption);
+
         let UploadedDocFiles = JSON.parse(response["Table"][0].Column2) || [],
           totalArr = JSON.parse(response["Table1"][0].Result) || [],
           resultArr = totalArr.filter(
@@ -991,7 +1038,7 @@ function Form() {
         setDescription(Filterdoctype[0].DocType);
         if (OrgDocId && Filterdoctype[0].Id !== OrgDocId) {
           setWhichProcessMsg(0);
-          setOpenMsg(true);
+          // setOpenMsg(true);
           setDocCheck(Filterdoctype[0].DocType);
           debugger;
           // console.log(activeDropzone);
@@ -1013,8 +1060,13 @@ function Form() {
             1
           );
 
+          let containsNumber = /\d/.test(Confident_Score);
+          let percentageValue = Confident_Score;
+          if (containsNumber)
+            percentageValue = (Confident_Score * 100).toFixed(0) + "%";
+
           document.querySelector("#spnConfidenceScore").innerHTML =
-            "<label>Confidence Score : </label>" + " " + Confident_Score ||
+            "<label>Confidence Score : </label>" + " " + percentageValue ||
             "" + " | " + "<label>DocType : </label>" + " " + docType_;
 
           // setConfidenceScoreDetails(
@@ -1115,12 +1167,18 @@ function Form() {
     }
   }
 
-  function fnCheckFeedbackJSON(docType) {
+  function fnCheckFeedbackJSON(docType, DocDbFields__) {
     let validateJSON = true;
 
     if (Number(docType) !== Number(169)) {
       if (JSON.stringify(OrgDocDbFields) === JSON.stringify(DocDbFields))
         validateJSON = false;
+
+      setOrgDocDbFields(structuredClone(DocDbFields));
+      // if (DocDbFields__ !== undefined && DocDbFields__ !== "") {
+      //   if (JSON.stringify(OrgDocDbFields) === JSON.stringify(DocDbFields__))
+      //     validateJSON = false;
+      // }
     } else {
       let ParsedJson = OriginalResJSON;
       if (OriginalResJSON.indexOf("extraction_json") > -1)
@@ -1152,8 +1210,9 @@ function Form() {
 
   function fnCheckBorrEntityExistsValidation(flag, ParsedJson) {
     // debugger;
-    let FilterJSON = {};
-    if (flag === 1) FilterJSON = JSON.stringify(ParsedJson);
+    let FilterJSON = {},
+      IsCheckValidated = 0;
+    if (flag === 1 || flag === 2) FilterJSON = JSON.stringify(ParsedJson);
     else FilterJSON = JSON.stringify(ResJSON);
 
     handleAPI({
@@ -1171,8 +1230,17 @@ function Form() {
         let BorrLists = SplitRes[2];
         let EntityLists = SplitRes[3];
 
+        if (flag === 2) {
+          if (Number(BorrExists) === 1) {
+            IsCheckValidated = 1;
+            fnSaveOtherDBField(1);
+            return;
+          } else IsCheckValidated = 0;
+          EntityExists = 1;
+        }
+
         if (Number(BorrExists) === 1 && Number(EntityExists) === 1) {
-          fnSaveFieldsToDW();
+          if (flag !== 2) fnSaveFieldsToDW();
         } else {
           setIsBorrExists(BorrExists);
           setIsEntityExists(EntityExists);
@@ -1181,6 +1249,7 @@ function Form() {
           setModalOpen(true);
         }
         setEnableSave(false);
+        return IsCheckValidated;
         // setModalOpen(true);
       })
       .catch((error) => {
@@ -1276,11 +1345,20 @@ function Form() {
         // ) {
         if (UploadedMonthlyIncome[0].Confident_Score === 0)
           UploadedMonthlyIncome[0].Confident_Score = "";
+
+        let containsNumber = /\d/.test(
+          UploadedMonthlyIncome[0].Confident_Score
+        );
+        let percentageValue = UploadedMonthlyIncome[0].Confident_Score;
+        if (containsNumber)
+          percentageValue =
+            (UploadedMonthlyIncome[0].Confident_Score * 100).toFixed(0) + "%";
+
         if (document.querySelector("#spnConfidenceScore") !== null)
           document.querySelector("#spnConfidenceScore").innerHTML =
             "<label>Confidence Score : </label> " +
             " " +
-            UploadedMonthlyIncome[0].Confident_Score +
+            percentageValue +
             " | " +
             "<label>DocType : </label>" +
             " " +
@@ -1381,11 +1459,16 @@ function Form() {
     // ) {
     if (checkedIndex.Confident_Score === 0) checkedIndex.Confident_Score = "";
     setTimeout(() => {
+      let containsNumber = /\d/.test(checkedIndex.Confident_Score);
+      let percentageValue = checkedIndex.Confident_Score;
+      if (containsNumber)
+        percentageValue = (checkedIndex.Confident_Score * 100).toFixed(0) + "%";
+
       if (document.querySelector("#spnConfidenceScore") !== null)
         document.querySelector("#spnConfidenceScore").innerHTML =
           "<label>Confidence Score : </label>" +
           " " +
-          checkedIndex.Confident_Score +
+          percentageValue +
           " | " +
           "<label>DocType : </label>" +
           " " +
@@ -1424,9 +1507,14 @@ function Form() {
             JSON.parse(JSON.parse(response).Table[0].Column1) !== null
               ? JSON.parse(JSON.parse(response).Table[0].Column1)
               : [];
+
+          let DocDbFields__ =
+            JSON.parse(JSON.parse(response).Table[0].Column1) !== null
+              ? JSON.parse(JSON.parse(response).Table[0].Column1)
+              : [];
           // setDocDbFields([...DocDbFields, ...DocDbFields_]);
           setDocDbFields(DocDbFields_);
-          setOrgDocDbFields(DocDbFields_);
+          setOrgDocDbFields(DocDbFields__);
           if (DocDbFields_.length > 0) {
             setAssetTypeOptionValue(
               DocDbFields_.filter(
@@ -1464,7 +1552,7 @@ function Form() {
   }
 
   function fnFrequencyValue(FreqValue) {
-    if (!isNaN(FreqValue)) return FreqValue;
+    if (!isNaN(FreqValue) || FreqValue === undefined) return FreqValue;
     const value = FreqValue?.toString().replace("-", "").toLowerCase();
 
     if (value.indexOf("hourly") > -1) return 1;
@@ -1524,10 +1612,18 @@ function Form() {
             item.Value = ParsedJson.financial_institution || "";
 
           if (Number(item.Dbfieldid) === Number(8386))
-            item.Value = fndataformat(ParsedJson.beginning_date) || "";
+            item.Value =
+              fndataformat(ParsedJson.beginning_date).replace(
+                /undefined\//g,
+                ""
+              ) || "";
 
           if (Number(item.Dbfieldid) === Number(8387))
-            item.Value = fndataformat(ParsedJson.ending_date) || "";
+            item.Value =
+              fndataformat(ParsedJson.ending_date).replace(
+                /undefined\//g,
+                ""
+              ) || "";
 
           if (Number(item.Dbfieldid) === Number(3052))
             item.Value = ParsedJson.account_holder[0] || "";
@@ -1535,16 +1631,66 @@ function Form() {
           if (Number(item.Dbfieldid) === Number(3061))
             item.Value = ParsedJson.account_number[0] || "";
 
-          if (Number(item.Dbfieldid) === Number(3062))
-            item.Value = ParsedJson.current_balance[0] || "";
+          // if (
+          //   Number(item.Dbfieldid) === Number(3062) &&
+          //   ParsedJson.current_balance[0] !== undefined
+          // )
+          //   item.Value = ParsedJson.current_balance[0] || "";
+
+          if (
+            Number(item.Dbfieldid) === Number(3062) &&
+            ParsedJson?.account !== "" &&
+            ParsedJson?.account !== undefined
+          ) {
+            // item.Value = ParsedJson.current_balance[0] || "";
+            let CurrentBalChk = 0,
+              CurrentBalSav = 0;
+            ParsedJson.account.forEach((element) => {
+              if (element.type === "Checking")
+                CurrentBalChk = element.current_balance
+                  .replace("$", "")
+                  .replace(",", "");
+
+              if (element.type === "Saving")
+                CurrentBalSav = element.current_balance
+                  .replace("$", "")
+                  .replace(",", "");
+
+              item.Value = formatCurrency(CurrentBalChk + CurrentBalSav);
+            });
+          }
 
           if (Number(item.Dbfieldid) === Number(8388))
             item.Value =
               ParsedJson.qualifying_balance[0] ||
               ParsedJson.qualifying_balance ||
               "";
-          if (Number(item.Dbfieldid) === Number(3059)) {
-            const typeAcc = ParsedJson.account_type.join(", ");
+          if (
+            Number(item.Dbfieldid) === Number(3059) &&
+            ParsedJson?.account_type !== "" &&
+            ParsedJson?.account_type !== undefined
+          ) {
+            const typeAcc = ParsedJson?.account_type?.join(", ");
+            // item.Value = [typeAcc];
+
+            // setAssetTypeOptionValue(typeAcc);
+
+            setAssetTypeOptionValue(typeAcc.split(", "));
+            console.log(typeAcc);
+          }
+
+          if (
+            Number(item.Dbfieldid) === Number(3059) &&
+            ParsedJson?.account !== "" &&
+            ParsedJson?.account !== undefined
+          ) {
+            let typeAcc;
+            // const typeAcc = ParsedJson?.account?.join(", ");
+            ParsedJson.account.forEach((element) => {
+              typeAcc = element.type + ", ";
+              console.log(element);
+            });
+
             // item.Value = [typeAcc];
 
             // setAssetTypeOptionValue(typeAcc);
@@ -1556,11 +1702,84 @@ function Form() {
 
         setDocDbFields(DocDbFields);
         setUpdateMappingonlyonNew(false);
+        setOrgDocDbFields(structuredClone(DocDbFields));
       }
     }
   }
 
-  function fnSendFeedbacktoAPI() {
+  function fnUpdateOriginalJSON(DBFields, flag) {
+    // debugger;
+    let OriginalJSON_ = OriginalResponsefromAPI || OriginalResJSON;
+    if (OriginalJSON_ !== "") {
+      OriginalJSON_ = JSON.parse(OriginalJSON_)["extraction_json"] ?? {};
+      if (OriginalJSON_ !== undefined || OriginalJSON_ !== "") {
+        if (Number(DocTypeValue) === 169) {
+          OriginalJSON_["Name of Employer"] = ResJSON["Name of Employer"];
+          OriginalJSON_["Which Borrower"] = ResJSON["Which Borrower"];
+          OriginalJSON_["Employer Zip Code"] = ResJSON["Employer Zip Code"];
+          OriginalJSON_["Gross Pay"] = ResJSON["Gross Pay"];
+          OriginalJSON_["Hours Worked Per Week"] =
+            ResJSON["Hours Worked Per Week"];
+          OriginalJSON_["Paid From Date"] = ResJSON["Paid From Date"];
+          OriginalJSON_["Paid To Date"] = ResJSON["Paid To Date"];
+          OriginalJSON_["Pay Frequency"] = ResJSON["Pay Frequency"];
+          OriginalJSON_["YTD Earnings"] = ResJSON["YTD Earnings"];
+
+          OriginalJSON_["Employer State"] = ResJSON["Employer State"];
+          OriginalJSON_["Employer Full Address"] =
+            ResJSON["Employer Full Address"];
+          OriginalJSON_["Employer City"] = ResJSON["Employer City"];
+          OriginalJSON_["Employer Address"] = ResJSON["Employer Address"];
+        } else {
+          if (
+            Number(DocTypeValue) === 43 &&
+            OriginalJSON_.financial_institution !== undefined
+          ) {
+            DocDbFields.forEach((item) => {
+              if (Number(item.Dbfieldid) === Number(3058))
+                OriginalJSON_.financial_institution = item.Value;
+
+              if (Number(item.Dbfieldid) === Number(8386))
+                OriginalJSON_.beginning_date = item.Value;
+
+              if (Number(item.Dbfieldid) === Number(8387))
+                OriginalJSON_.ending_date = item.Value;
+
+              if (Number(item.Dbfieldid) === Number(3052))
+                OriginalJSON_.account_holder[0] = item.Value;
+
+              if (Number(item.Dbfieldid) === Number(3061))
+                OriginalJSON_.account_number[0] = item.Value;
+
+              // if (Number(item.Dbfieldid) === Number(3062))
+              //   OriginalJSON_.current_balance[0] = item.Value;
+
+              // if (Number(item.Dbfieldid) === Number(8388)) {
+              //   if (OriginalJSON_.qualifying_balance[0] != undefined)
+              //     OriginalJSON_.qualifying_balance[0] = item.Value;
+              //   else OriginalJSON_.qualifying_balance = [item.Value];
+              // }
+              // if (Number(item.Dbfieldid) === Number(3059)) {
+              //   OriginalJSON_.account_type = AssetTypeOptionValue;
+              // }
+            });
+          }
+        }
+      }
+    }
+
+    if (flag === 1) return OriginalJSON_;
+    else {
+      let OrginRes = JSON.parse(OriginalResponsefromAPI || OriginalResJSON);
+      OrginRes["extraction_json"] = OriginalJSON_;
+      if (Number(DocTypeValue !== 169))
+        setOriginalResponsefromAPI(JSON.stringify(OrginRes));
+
+      return JSON.stringify(OrginRes);
+    }
+  }
+
+  function fnSendFeedbacktoAPI(DocDbFields__) {
     // debugger;
     let docType = DocType.filter(
         (items) =>
@@ -1571,25 +1790,15 @@ function Form() {
       fileName = "";
 
     if (
-      fnCheckFeedbackJSON(Details["DocType"] || DocTypeValue) ||
+      fnCheckFeedbackJSON(Details["DocType"] || DocTypeValue, DocDbFields__) ||
       FeedBackCollection
     ) {
       var myHeaders = new Headers();
       myHeaders.append("x-api-key", "9cQKFT3dYKrOnF8CEDKO4DTaSKxrHUD4JK8f3tT3");
       myHeaders.append("Content-Type", "application/json");
 
-      // if (typeof file === "string") {
-      //   fileName = file.split("PDF/")[1];
-      //   file_ = await convertUrlToFile(file, fileName)
-      //     .then((file) => {
-      //       // Use the file as needed
-      //       console.log(file);
-      //       return file;
-      //     })
-      //     .catch((error) => {
-      //       console.error("Error converting URL to file:", error);
-      //     });
-      // } else fileName = file.name || "";
+      let FirstTimeLog = 0;
+      if (FeedBackCollection) FirstTimeLog = 1;
       setFeedBackCollection(false);
       let UploadedMonthlyIncome = uploadedDocument.filter(
         (item) => item.ScanDocId == scandocId
@@ -1604,39 +1813,18 @@ function Form() {
         //     : UploadedMonthlyIncome[0].Task_Id,
         ...(docType[0].DocType === "Pay Stub"
           ? ResJSON
+          : Number(DocTypeValue) === 43
+          ? fnUpdateOriginalJSON("", 1)
           : DocDbFields.reduce((result, item) => {
               result[item.DisplayName] = item.Value;
               return result;
             }, {})),
       };
 
-      // let formdata = new FormData();
-      // formdata.append("file", file);
-      // formdata.append("json_data", JSON.stringify(originalData));
-      // originalData = Object.fromEntries(
-      //   Object.entries(originalData).map(([key, value]) => [
-      //     key.replace(/\s/g, ""),
-      //     value,
-      //   ])
-      // );
-
       console.log("file=====>", file);
       console.log("=====>", JSON.stringify(originalData));
       // return;
 
-      // let raw = {}; //JSON.stringify({
-      //   task_id: "2023-04-26-07-37-42-dbe77e0b-0fe2-4a19-9317-12d23ba35d90",
-      //   doc_type: "Paystub",
-      //   "Name of Employer": "University of Utah",
-      //   "Which Borrower": "RICARDO FEO CARDOSO",
-      //   "Paid From Date": "12/01/2021",
-      //   "Paid To Date": "12/15/2021",
-      //   "Pay Frequency": "Biweekly",
-      //   "Gross Pay": "$8,369.29",
-      //   "YTD Earnings": "$131,789.84",
-      //   "Hours Worked Per Week": "Unknown",
-      // });
-      // raw = JSON.stringify(originalData);
       let requestOptions = {
         method: "POST",
         headers: myHeaders,
@@ -1659,7 +1847,9 @@ function Form() {
           SessionId +
           "&IsIgnored=false" +
           "&doc_type=" +
-          docType[0].DocType,
+          docType[0].DocType +
+          "&FirstTimeLog=" +
+          FirstTimeLog,
         requestOptions
       )
         .then((response) => response.json())
@@ -1780,6 +1970,8 @@ function Form() {
                   fnCheckBorrEntityExistsValidation
                 }
                 setFeedBackCollection={setFeedBackCollection}
+                setMultipleProgressbar={setMultipleProgressbar}
+                MultipleProgressbar={MultipleProgressbar}
               />
               <div
                 id="divDropZoneWrapper"
@@ -1837,6 +2029,13 @@ function Form() {
                           fnCheckBorrEntityExistsValidation
                         }
                         setFeedBackCollection={setFeedBackCollection}
+                        setMultipleProgressbar={(fileDetails) => {
+                          let tempDocDetaisls = DocDetails;
+                          tempDocDetaisls[index].MultipleProgressbar =
+                            fileDetails;
+                          setDocDetails([...tempDocDetaisls]);
+                        }}
+                        MultipleProgressbar={item.MultipleProgressbar}
                       />
                     );
                   })}
@@ -2496,7 +2695,9 @@ function Form() {
                       //   "width=1200,height=1200,resizable=yes,scrollbars=yes"
                       // );
                       openNewWindow(
-                        `/AgGrid?LoanId=${LoanId}&SessionId=${SessionId}`
+                        `/AgGrid?LoanId=${LoanId}&SessionId=${SessionId}&ScandocId=${
+                          scandocId || 0
+                        }`
                       );
                       // console.log("FeedBack");
                     },
@@ -2734,6 +2935,9 @@ function Form() {
             setcheckIcon={setcheckIcon}
             ShowError={ShowError}
             ResJSON={ResJSON}
+            DocTypeValue={DocTypeValue}
+            fnSaveOtherDBField={fnSaveOtherDBField}
+            DocDbFields={DocDbFields}
           />
         )}
       {ConditionalRemainingModel && (

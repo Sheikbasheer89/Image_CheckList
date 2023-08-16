@@ -13,6 +13,7 @@ import Stack from "@mui/material/Stack";
 import Button from "@mui/material/Button";
 import { handleAPI } from "./CommonFunction";
 import { useDropzone } from "react-dropzone";
+import DoneIcon from "@mui/icons-material/Done";
 
 function DropZone(props) {
   const {
@@ -43,10 +44,13 @@ function DropZone(props) {
     IncomeCalcProgres,
     fnCheckBorrEntityExistsValidation,
     setFeedBackCollection,
+    setMultipleProgressbar,
+    MultipleProgressbar = [],
   } = props;
   // console.log("Props", props);
   const [ExtractProgres, setExtractProgres] = useState(false);
   const { contextDetails, setContextDetails } = useContext(Context);
+
   // console.clear();
   // console.log("=========================");
   // console.log(contextDetails);
@@ -74,132 +78,170 @@ function DropZone(props) {
   // }, []);
 
   // const { getRootProps, getInputProps } = useDropzone({ onDrop });
+  // useEffect(() => {
+  //   window.dispatchEvent(new Event('resize'));
+  // }, [MultipleProgressbar])
 
-  const fileUpload = (event) => {
-    const [file] = event.target.files;
-    const fileInfo = event.target.files[0];
-    setExtractProgres(true);
+  const fileUpload = async (event) => {
+    let file;
+    let fileInfo;
+    const selectedFiles = event.target.files;
+    debugger;
+    // setExtractProgres(true);
     setFieldExtractProgres(true);
     setDocTypeValue(0);
     // setDocDbFields([]);
     fnGetLeaderLineSetup({});
     setOriginalResJSON("");
-    const reader = new FileReader();
+    setMultipleProgressbar([...[], ...Array.from(selectedFiles)]);
+    for (let i = 0; i < selectedFiles.length; i++) {
+      file = selectedFiles[i];
+      fileInfo = selectedFiles[i];
+      console.log(`Uploading file ${i + 1}: ${file.name}`);
 
-    reader.addEventListener(
-      "load",
-      () => {
-        // console.log(reader.result);
-        handleSetFile(file);
-        setFeedBackCollection(true);
-        var formdata = new FormData();
+      // const reader = new FileReader();
 
-        formdata.append("", fileInfo);
+      // reader.addEventListener(
+      //   "load",
+      //   () => {
+      // console.log(reader.result);
+      handleSetFile(file);
+      setFeedBackCollection(true);
+      var formdata = new FormData();
 
-        let params = {
-          LoanId: LoanId,
-          DocTypeId: props.DocTypeId,
-          sessionid: SessionId,
-          category: props.Category,
-          description: props.ShortName || "" + " for Loan " + LoanId,
-          usedoc: 2,
-          entityid: props.EntityId || 0,
-          entitytypeid: props.EntityTypeId || 0,
-          conditonid: props.ID,
-        };
+      formdata.append("", fileInfo);
 
-        var requestOptions = {
-          method: "POST",
-          body: formdata,
-          redirect: "follow",
-        };
+      let params = {
+        LoanId: LoanId,
+        DocTypeId: props.DocTypeId,
+        sessionid: SessionId,
+        category: props.Category,
+        description: props.ShortName || "" + " for Loan " + LoanId,
+        usedoc: 2,
+        entityid: props.EntityId || 0,
+        entitytypeid: props.EntityTypeId || 0,
+        conditonid: props.ID,
+      };
 
-        params = Object.keys(params)
-          .map((key) => `${key}=${params[key]}`)
-          .join("&");
-        ////
-        fetch(
-          "https://www.solutioncenter.biz/LoginCredentialsAPI/api/UploadFiles?" +
-            params,
-          requestOptions
-        )
-          .then((response) => response.json())
-          .then((result) => {
-            // console.log(result);
-            // fnGetLeaderLineSetup(result);
-            let getScandocId = result.split("~")[1];
-            if (
-              getScandocId === undefined ||
-              // result?.toString().indexOf("business_logic_json") === -1
-              result?.toString().indexOf("extraction_json") === -1 ||
-              JSON.parse(result.split("~")[0]).extraction_json === null
-            ) {
-              setExtractProgres(false);
-              setFieldExtractProgres(false);
-              setExtractResult(result);
-              setOriginalResJSON("");
-              setScandocId(getScandocId);
-              // fnPdfclassification(file, getScandocId, requestOptions);
-              setWhichProcessMsg(0);
-              setDocCheck(
-                JSON.parse(result.split("~")[0]).doc_type || "Miscellaneous"
-              );
-              setOpenMsg(true);
-              setTaskId(JSON.parse(result.split("~")[0]).task_id);
+      var requestOptions = {
+        method: "POST",
+        body: formdata,
+        redirect: "follow",
+      };
 
-              let Confident_Score = JSON.parse(
-                result.split("~")[0]
-              ).doc_type_confidence_score;
-              props.handleSetValuetoDD(
-                JSON.parse(result.split("~")[0])["doc_type"],
-                props.DocTypeId,
-                getScandocId,
-                Confident_Score || ""
-              );
+      params = Object.keys(params)
+        .map((key) => `${key}=${params[key]}`)
+        .join("&");
+      ////
+      await fetch(
+        "https://www.solutioncenter.biz/LoginCredentialsAPI/api/UploadFiles?" +
+          params,
+        requestOptions
+      )
+        .then((response) => response.json())
+        .then((result) => {
+          // console.log(result);
+          // fnGetLeaderLineSetup(result);
+          console.log(selectedFiles);
+          let selectedFiles_ = Array.from(selectedFiles),
+            fileType =
+              JSON.parse(result.split("~")[0]).doc_type || "Miscellaneous";
 
-              fnGetLeaderLineSetup({});
-              setOriginalResJSON(result.split("~")[0]);
+          selectedFiles_[i].isComplete = true;
+          selectedFiles_[
+            i
+          ].docMovedMessage = `This document is recognized as ${fileType} and was moved to ${fileType} section.`;
+          selectedFiles_[i].docType = JSON.parse(result.split("~")[0])[
+            "doc_type"
+          ];
+          selectedFiles_[i].docTypeId = props.DocTypeId;
+          selectedFiles_[i].ScandocId = result.split("~")[1];
+          selectedFiles_[i].confidence_score =
+            JSON.parse(result.split("~")[0]).doc_type_confidence_score || "";
 
-              return;
-            }
-            // console.log("ScandocId", getScandocId);
-            setExtractResult("");
-            setScandocId(getScandocId);
-            let IsSaved = 1;
-            if (result.split("~")[2] !== undefined)
-              IsSaved = result.split("~")[2];
+          let IsSaved = 1;
+          if (result.split("~")[2] !== undefined)
+            IsSaved = result.split("~")[2];
+          selectedFiles_[i].IsSaved = IsSaved;
 
-            result = result.split("~")[0];
-            // let ParsedJson = JSON.parse(result)["business_logic_json"];
-            let ParsedJson = JSON.parse(result)["extraction_json"];
-            console.log(ParsedJson);
-            fnGetLeaderLineSetup(ParsedJson);
-            setOriginalResJSON(result);
+          selectedFiles_[i].ParsedJson = "";
 
-            props.handleSetValuetoDD(
-              JSON.parse(result)["doc_type"],
-              props.DocTypeId,
-              getScandocId
-            );
-            setExtractProgres(false);
+          console.log(MultipleProgressbar);
+          setMultipleProgressbar([...[], ...selectedFiles_]);
+          let getScandocId = result.split("~")[1];
+          if (
+            getScandocId === undefined ||
+            // result?.toString().indexOf("business_logic_json") === -1
+            result?.toString().indexOf("extraction_json") === -1 ||
+            JSON.parse(result.split("~")[0]).extraction_json === null
+          ) {
+            // setExtractProgres(false);
             setFieldExtractProgres(false);
+            setExtractResult(result);
+            setOriginalResJSON("");
+            setScandocId(getScandocId);
+            // fnPdfclassification(file, getScandocId, requestOptions);
+            setWhichProcessMsg(0);
+            // setDocCheck(
+            //   JSON.parse(result.split("~")[0]).doc_type || "Miscellaneous"
+            // );
+            // setOpenMsg(true);
+            setTaskId(JSON.parse(result.split("~")[0]).task_id);
 
-            if (Number(IsSaved) !== 1) {
-              setEnableSave(true);
-              if (JSON.parse(result)["doc_type"].toLowerCase() === "paystub")
-                setTimeout(() => {
-                  fnCheckBorrEntityExistsValidation(1, ParsedJson);
-                }, 10);
-            } else setEnableSave(false);
+            // let Confident_Score = JSON.parse(
+            //   result.split("~")[0]
+            // ).doc_type_confidence_score;
+            // props.handleSetValuetoDD(
+            //   JSON.parse(result.split("~")[0])["doc_type"],
+            //   props.DocTypeId,
+            //   getScandocId,
+            //   Confident_Score || ""
+            // );
 
-            // fndrawfield();
-          })
-          .catch((error) => console.log("error", error));
-      },
-      false
-    );
-    if (file) {
-      reader.readAsText(file);
+            fnGetLeaderLineSetup({});
+            setOriginalResJSON(result.split("~")[0]);
+
+            return;
+          }
+          // console.log("ScandocId", getScandocId);
+          setExtractResult("");
+          setScandocId(getScandocId);
+          // let IsSaved = 1;
+          // if (result.split("~")[2] !== undefined)
+          //   // IsSaved = result.split("~")[2];
+
+          result = result.split("~")[0];
+          // let ParsedJson = JSON.parse(result)["business_logic_json"];
+          let ParsedJson = JSON.parse(result)["extraction_json"];
+          console.log(ParsedJson);
+          fnGetLeaderLineSetup(ParsedJson);
+          setOriginalResJSON(result);
+          selectedFiles_[i].ParsedJson = ParsedJson;
+          // props.handleSetValuetoDD(
+          //   JSON.parse(result)["doc_type"],
+          //   props.DocTypeId,
+          //   getScandocId
+          // );
+          // setExtractProgres(false);
+          setFieldExtractProgres(false);
+
+          // if (Number(IsSaved) !== 1) {
+          //   setEnableSave(true);
+          //   if (JSON.parse(result)["doc_type"].toLowerCase() === "paystub")
+          //     setTimeout(() => {
+          //       fnCheckBorrEntityExistsValidation(1, ParsedJson);
+          //     }, 10);
+          // } else setEnableSave(false);
+
+          // fndrawfield();
+        })
+        .catch((error) => console.log("error", error));
+      // }
+      //   ,
+      //   false
+      // );
+    }
+    if (event.target.files) {
       event.target.value = null;
     }
   };
@@ -254,7 +296,7 @@ function DropZone(props) {
       setTimeout(() => {
         try {
           var myElement = document.querySelector(".activeDropZone");
-          var topPos = myElement.offsetTop - 150;
+          var topPos = myElement.offsetTop - 300;
           document.getElementById("divDropZoneWrapper").scrollTop = topPos;
         } catch (error) {}
       }, 100);
@@ -300,7 +342,8 @@ function DropZone(props) {
               -1 &&
             event.target.classList.toString().indexOf("drop-container") ===
               -1 &&
-            event.target.classList.toString().indexOf("drop-title") === -1
+            event.target.classList.toString().indexOf("drop-title") === -1 &&
+            event.target.classList.toString().indexOf("ahrefcls") === -1
           )
             handleActivedropzone({
               ...activeDropzone,
@@ -314,11 +357,12 @@ function DropZone(props) {
             display: "inline-flex",
             width: "90%",
             cursor: "pointer",
+            position: "relative",
           }}
           // {...getRootProps()}
         >
           {/* <div style={{ display: "inline-block", width: "30%" }}> */}
-          <label
+          {/* <label
             className={`drop-container ${
               //props.Required === "1"  ? "btn-warning" :  ? 'btn-success' : "label-yellow"
               props.ScanDocId > 0
@@ -327,18 +371,46 @@ function DropZone(props) {
                 ? "btn-warning"
                 : "label-yellow"
             }`}
-          >
-            <span className="drop-title">Click to Upload</span>
+          > */}
+          {/* <span className="drop-title">Click to Upload</span> */}
+          <div style={{ width: "40%" }}>
+            {/* <label htmlFor="uploadFile" className="drop-title">
+            Click to Upload
+          </label> */}
+            <div
+              className="drop-title"
+              onDragOver={(e) => {
+                e.currentTarget.style.zIndex = 0;
+              }}
+              onClick={(e) => {
+                e.currentTarget.nextSibling.click();
+              }}
+            >
+              Click to Upload
+            </div>
+
             <input
+              className={`drop-container ${
+                //props.Required === "1"  ? "btn-warning" :  ? 'btn-success' : "label-yellow"
+                props.ScanDocId > 0
+                  ? "btn-success"
+                  : props.Required === "1"
+                  ? "btn-warning"
+                  : "label-yellow"
+              }`}
               type="file"
               name="file"
               id="uploadFile"
               accept=".pdf"
-              onChange={fileUpload}
+              onChange={(e) => {
+                e.currentTarget.previousSibling.style.zIndex = 11;
+                fileUpload(e);
+              }}
+              multiple
             ></input>
-
-            {/* <input style={{ display: "none" }} {...getInputProps} /> */}
-          </label>
+          </div>
+          {/* <input style={{ display: "none" }} {...getInputProps} /> */}
+          {/* </label> */}
           {/* </div> */}
           {/* <div style={{ display: "inline-block", width: "69%" }}> */}
           <span
@@ -462,16 +534,68 @@ function DropZone(props) {
           </span>
           {/* </div> */}
         </div>{" "}
-        {ExtractProgres && (
+        {MultipleProgressbar.length > 0 && (
           <div>
-            <CircularProgress
-              size={15}
-              style={{ margin: "0px 5px 0px 15px" }}
-            />
-            <span style={{ verticalAlign: "top", fontSize: "12px" }}>
-              {" "}
-              Extracting Pdf...
-            </span>
+            {MultipleProgressbar.map((file) => {
+              // debugger;
+              return (
+                <>
+                  {file["isComplete"] ? (
+                    <>
+                      <div>
+                        <DoneIcon
+                          style={{ color: "green", fontWeight: "bolder" }}
+                        ></DoneIcon>{" "}
+                        {file["docMovedMessage"]} {" "}
+                        <a
+                          href="#"
+                          className="ahrefcls"
+                          onClick={(event) => {
+                            props.handleSetValuetoDD(
+                              file["docType"],
+                              file["docTypeId"],
+                              file["ScandocId"],
+                              file["Confident_Score"]
+                            );
+
+                            if (Number(file["IsSaved"]) !== 1) {
+                              setEnableSave(true);
+                              if (file["docType"]?.toLowerCase() === "paystub")
+                                setTimeout(() => {
+                                  fnCheckBorrEntityExistsValidation(
+                                    1,
+                                    file["ParsedJson"]
+                                  );
+                                }, 10);
+                            } else setEnableSave(false);
+
+                            event.preventDefault();
+                          }}
+                          style={{
+                            verticalAlign: "top",
+                            fontSize: "12px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <b>({file.name})</b>
+                        </a>
+                      </div>
+                    </>
+                  ) : (
+                    <div>
+                      <CircularProgress
+                        size={15}
+                        style={{ margin: "0px 5px 0px 15px" }}
+                      />
+                      <span style={{ verticalAlign: "top", fontSize: "12px" }}>
+                        {" "}
+                        Extracting PDF <b>({file.name})</b>
+                      </span>
+                    </div>
+                  )}
+                </>
+              );
+            })}
           </div>
         )}
         {/* {error.invalidFile !== undefined && (

@@ -18,7 +18,19 @@ function Modal(props) {
     setcheckIcon,
     ShowError,
     ResJSON,
+    DocTypeValue,
+    fnSaveOtherDBField,
+    DocDbFields,
   } = props;
+
+  function fnGetDocDBName() {
+    let Name = "";
+    let DocDbFields___ = DocDbFields.filter(
+      (item) => item.DisplayName === "Which Borrower"
+    );
+    if (DocDbFields___.length > 0) Name = DocDbFields___[0].Value;
+    return Name;
+  }
 
   return (
     <div className="modalBackground" style={{ zIndex: 9999 }}>
@@ -37,8 +49,11 @@ function Modal(props) {
           {Number(IsBorrExists) === 0 && (
             <span>
               <strong>
-                {ResJSON["Which Borrower"]} is not recognized. Would you like to
-                add this borrower, or map this to an existing borrower?
+                {Number(DocTypeValue) === 169
+                  ? ResJSON["Which Borrower"]
+                  : fnGetDocDBName()}{" "}
+                is not recognized. Would you like to add this borrower, or map
+                this to an existing borrower?
               </strong>
               <div>
                 {/* <button
@@ -123,6 +138,7 @@ function Modal(props) {
                   SelectedVal={WhichEnity}
                   fromBorrEntityExists="2"
                   onChange={(e) => {
+                    debugger;
                     let { name, value } = e.target;
                     fnBorrEntityValueChange({
                       name: name,
@@ -156,7 +172,28 @@ function Modal(props) {
             <button
               className="btn btn-primary"
               onClick={() => {
-                fnSaveFieldsToDW();
+                debugger;
+                console.log(BorrLists);
+                console.log(WhichBorrower);
+                if (Number(DocTypeValue) !== 169) {
+                  let DocDbFields__ = DocDbFields;
+                  if (
+                    Number(WhichBorrower) !== -1 &&
+                    Number(WhichBorrower) !== 0
+                  ) {
+                    let FilterBorrList = JSON.parse(BorrLists).filter(
+                      (item) => Number(item.CustId) === Number(WhichBorrower)
+                    );
+
+                    if (FilterBorrList.length > 0) {
+                      DocDbFields__.forEach((item) => {
+                        if (item.DisplayName === "Which Borrower")
+                          item.Value = FilterBorrList[0].Name;
+                      });
+                    }
+                  }
+                  fnSaveOtherDBField(1, DocDbFields__);
+                } else fnSaveFieldsToDW();
               }}
               style={{ marginRight: "10px" }}
             >

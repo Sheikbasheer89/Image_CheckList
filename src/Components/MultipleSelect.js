@@ -43,7 +43,7 @@ export default function MultipleSelectCheckmarks(props) {
   };
 
   return (
-    <div>
+    <div style={{marginLeft: "5px"}}>
       <div className="divSelectWrapper" sx={{ m: 1, width: 300 }}>
         <InputLabel>{label}</InputLabel>
         <Select

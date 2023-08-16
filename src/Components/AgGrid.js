@@ -48,7 +48,10 @@ const AgGrid = (props) => {
 
     handleAPI({
       name: "GetFeedBackAPIChangeLog",
-      params: { LoanId: searchParams.get("LoanId") },
+      params: {
+        LoanId: searchParams.get("LoanId"),
+        ScandocIdd: searchParams.get("ScandocId"),
+      },
     })
       .then((response) => {
         debugger;
@@ -205,7 +208,7 @@ const AgGrid = (props) => {
   }
 
   function MyRendererIgnore(params) {
-    return (
+    return params.data.IsIgnore !== 2 ? (
       <span className="my-renderer">
         <button
           style={{ cursor: "pointer", lineHeight: "0.5" }}
@@ -242,6 +245,8 @@ const AgGrid = (props) => {
         </span>
         {params.value}
       </span>
+    ) : (
+      ""
     );
   }
   const columnDefs = [
