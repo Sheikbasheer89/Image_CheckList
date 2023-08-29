@@ -14,6 +14,7 @@ import Button from "@mui/material/Button";
 import { handleAPI } from "./CommonFunction";
 import { useDropzone } from "react-dropzone";
 import DoneIcon from "@mui/icons-material/Done";
+import { json } from "react-router-dom";
 
 function DropZone(props) {
   const {
@@ -46,11 +47,12 @@ function DropZone(props) {
     setFeedBackCollection,
     setMultipleProgressbar,
     MultipleProgressbar = [],
+    fnUpdateDocdeatails,
   } = props;
   // console.log("Props", props);
   const [ExtractProgres, setExtractProgres] = useState(false);
   const { contextDetails, setContextDetails } = useContext(Context);
-
+  const [SelectedFile, setSelectedFile] = useState([]);
   // console.clear();
   // console.log("=========================");
   // console.log(contextDetails);
@@ -85,9 +87,11 @@ function DropZone(props) {
   const fileUpload = async (event) => {
     let file;
     let fileInfo;
-    const selectedFiles = event.target.files;
+    let selectedFiles = event.target.files;
     debugger;
     // setExtractProgres(true);
+    if (document.querySelector("#spnConfidenceScore") !== null)
+      document.querySelector("#spnConfidenceScore").innerHTML = "";
     setFieldExtractProgres(true);
     setDocTypeValue(0);
     // setDocDbFields([]);
@@ -105,7 +109,7 @@ function DropZone(props) {
       //   "load",
       //   () => {
       // console.log(reader.result);
-      handleSetFile(file);
+      if (i === 0) handleSetFile(file);
       setFeedBackCollection(true);
       var formdata = new FormData();
 
@@ -141,99 +145,15 @@ function DropZone(props) {
         .then((response) => response.json())
         .then((result) => {
           // console.log(result);
-          // fnGetLeaderLineSetup(result);
+
+          selectedFiles[i].JobId = result.split("~")[0];
+          selectedFiles[i].isComplete = false;
+
           console.log(selectedFiles);
-          let selectedFiles_ = Array.from(selectedFiles),
-            fileType =
-              JSON.parse(result.split("~")[0]).doc_type || "Miscellaneous";
 
-          selectedFiles_[i].isComplete = true;
-          selectedFiles_[
-            i
-          ].docMovedMessage = `This document is recognized as ${fileType} and was moved to ${fileType} section.`;
-          selectedFiles_[i].docType = JSON.parse(result.split("~")[0])[
-            "doc_type"
-          ];
-          selectedFiles_[i].docTypeId = props.DocTypeId;
-          selectedFiles_[i].ScandocId = result.split("~")[1];
-          selectedFiles_[i].confidence_score =
-            JSON.parse(result.split("~")[0]).doc_type_confidence_score || "";
-
-          let IsSaved = 1;
-          if (result.split("~")[2] !== undefined)
-            IsSaved = result.split("~")[2];
-          selectedFiles_[i].IsSaved = IsSaved;
-
-          selectedFiles_[i].ParsedJson = "";
-
-          console.log(MultipleProgressbar);
-          setMultipleProgressbar([...[], ...selectedFiles_]);
-          let getScandocId = result.split("~")[1];
-          if (
-            getScandocId === undefined ||
-            // result?.toString().indexOf("business_logic_json") === -1
-            result?.toString().indexOf("extraction_json") === -1 ||
-            JSON.parse(result.split("~")[0]).extraction_json === null
-          ) {
-            // setExtractProgres(false);
-            setFieldExtractProgres(false);
-            setExtractResult(result);
-            setOriginalResJSON("");
-            setScandocId(getScandocId);
-            // fnPdfclassification(file, getScandocId, requestOptions);
-            setWhichProcessMsg(0);
-            // setDocCheck(
-            //   JSON.parse(result.split("~")[0]).doc_type || "Miscellaneous"
-            // );
-            // setOpenMsg(true);
-            setTaskId(JSON.parse(result.split("~")[0]).task_id);
-
-            // let Confident_Score = JSON.parse(
-            //   result.split("~")[0]
-            // ).doc_type_confidence_score;
-            // props.handleSetValuetoDD(
-            //   JSON.parse(result.split("~")[0])["doc_type"],
-            //   props.DocTypeId,
-            //   getScandocId,
-            //   Confident_Score || ""
-            // );
-
-            fnGetLeaderLineSetup({});
-            setOriginalResJSON(result.split("~")[0]);
-
-            return;
+          if (Array.from(selectedFiles).length - 1 === i) {
+            fnCheckJsonResponseLoop();
           }
-          // console.log("ScandocId", getScandocId);
-          setExtractResult("");
-          setScandocId(getScandocId);
-          // let IsSaved = 1;
-          // if (result.split("~")[2] !== undefined)
-          //   // IsSaved = result.split("~")[2];
-
-          result = result.split("~")[0];
-          // let ParsedJson = JSON.parse(result)["business_logic_json"];
-          let ParsedJson = JSON.parse(result)["extraction_json"];
-          console.log(ParsedJson);
-          fnGetLeaderLineSetup(ParsedJson);
-          setOriginalResJSON(result);
-          selectedFiles_[i].ParsedJson = ParsedJson;
-          // props.handleSetValuetoDD(
-          //   JSON.parse(result)["doc_type"],
-          //   props.DocTypeId,
-          //   getScandocId
-          // );
-          // setExtractProgres(false);
-          setFieldExtractProgres(false);
-
-          // if (Number(IsSaved) !== 1) {
-          //   setEnableSave(true);
-          //   if (JSON.parse(result)["doc_type"].toLowerCase() === "paystub")
-          //     setTimeout(() => {
-          //       fnCheckBorrEntityExistsValidation(1, ParsedJson);
-          //     }, 10);
-          // } else setEnableSave(false);
-
-          // fndrawfield();
         })
         .catch((error) => console.log("error", error));
       // }
@@ -243,6 +163,130 @@ function DropZone(props) {
     }
     if (event.target.files) {
       event.target.value = null;
+    }
+
+    function fnCheckJsonResponseLoop(iselectedFiles) {
+      let selectedFiles_ = iselectedFiles || selectedFiles;
+      debugger;
+      let Counter = 0,
+        FileCount = Array.from(selectedFiles_).length;
+
+      // setSelectedFile(selectedFiles_);
+
+      // setTimeout(() => {
+      Array.from(selectedFiles_).forEach(
+        async (file, j, CopyselectedFiles_) => {
+          if (file && file.JobId !== undefined && file.isComplete === false) {
+            await handleAPI({
+              name: "fnMetaAPIStatusCheckPollingWithOutWait",
+              params: {
+                LoanId: Number(LoanId),
+                JobId: file.JobId,
+              },
+            })
+              .then((result) => {
+                // console.log(response);
+                if (
+                  result.split("~")[0] === "" ||
+                  result.split("~")[0] === undefined ||
+                  result.split("~")[0] === "Submitted"
+                ) {
+                  // setTimeout(() => {
+                  //   fnCheckJsonResponseLoop(Array.from(SelectedFile));
+                  // }, 500);
+                  return;
+                }
+                // let selectedFiles_ = selectedFiles,
+                let fileType =
+                  JSON.parse(result.split("~")[0]).doc_type || "Miscellaneous";
+
+                file.isComplete = true;
+                file.docMovedMessage = `This document is recognized as ${fileType} and was moved to ${fileType} section.`;
+                file.docType = JSON.parse(result.split("~")[0])["doc_type"];
+                file.docTypeId = props.DocTypeId;
+                file.ScandocId = result.split("~")[1];
+                file.confidence_score =
+                  JSON.parse(result.split("~")[0]).doc_type_confidence_score ||
+                  "";
+
+                let IsSaved = 1;
+                if (result.split("~")[2] !== undefined)
+                  IsSaved = result.split("~")[2];
+                file.IsSaved = IsSaved;
+
+                file.ParsedJson = "";
+
+                console.log(MultipleProgressbar);
+                // Counter++;
+                // CopyselectedFiles_.push(file);
+                // if(Counter === FileCount)
+                console.log("CopyselectedFiles_", CopyselectedFiles_);
+                setMultipleProgressbar([...[], ...CopyselectedFiles_]);
+                // let iMultipleProgressbar = MultipleProgressbar
+                // iMultipleProgressbar= iMultipleProgressbar.map((item_) => {
+
+                //   item_.isComplete = item_.name == file.name
+                //   return item_
+
+                // })
+
+                let getScandocId = result.split("~")[1];
+                if (
+                  getScandocId === undefined ||
+                  // result?.toString().indexOf("business_logic_json") === -1
+                  result?.toString().indexOf("extraction_json") === -1 ||
+                  JSON.parse(result.split("~")[0]).extraction_json === null
+                ) {
+                  // setExtractProgres(false);
+                  setFieldExtractProgres(false);
+                  setExtractResult(result);
+                  setOriginalResJSON("");
+                  setScandocId(getScandocId);
+                  // fnPdfclassification(file, getScandocId, requestOptions);
+                  setWhichProcessMsg(0);
+                  fnGetLeaderLineSetup({});
+                  setOriginalResJSON(result.split("~")[0]);
+                } else {
+                  setExtractResult("");
+                  setScandocId(getScandocId);
+                  result = result.split("~")[0];
+                  // let ParsedJson = JSON.parse(result)["business_logic_json"];
+                  let ParsedJson = JSON.parse(result)["extraction_json"];
+                  console.log(ParsedJson);
+                  fnGetLeaderLineSetup(ParsedJson);
+                  setOriginalResJSON(result);
+                  file.ParsedJson = ParsedJson;
+                  setFieldExtractProgres(false);
+                }
+              })
+              .catch((error) => {
+                //debugger;
+                console.log("error", error);
+              });
+          }
+        }
+      );
+      // }, 2000);
+      // setMultipleProgressbar([...[], ...Array.from(selectedFiles_)]);
+
+      // Array.from(selectedFiles_).forEach((file, j) => {
+      //   if (file.isComplete === false) {
+      //     console.log("Here Looping")
+      //     fnCheckJsonResponseLoop(Array.from(selectedFiles_), 1);
+      //     return;
+      //   }
+      // });
+      // let selectedFiles__ = Array.from(selectedFiles_).filter(
+      //   (item) => item.isComplete === true
+      // );
+      // if (selectedFiles__.length !== Array.from(selectedFiles_).length) {
+      //   let iFilesDetails = JSON.parse(JSON.stringify(selectedFiles_));
+      //   // let iFilesDetails = structuredClone(Array.from(selectedFiles_))
+      //   // setTimeout(() => {
+      //   //   console.log("iFilesDetails", iFilesDetails);
+      //   fnCheckJsonResponseLoop(Array.from(selectedFiles_), 1);
+      //   // }, 2000);
+      // }
     }
   };
 
@@ -536,8 +580,20 @@ function DropZone(props) {
         </div>{" "}
         {MultipleProgressbar.length > 0 && (
           <div>
-            {MultipleProgressbar.map((file) => {
+            {MultipleProgressbar.map((file, index) => {
               // debugger;
+
+              if (file["isComplete"] && !file["isClicked"]) {
+                setTimeout(() => {
+              
+                    let aEle = document.querySelector("#fileLink_" + index);
+                    aEle.click();
+                    // aEle.removeAttribute("id");
+                    let iMultipleProgressbar=MultipleProgressbar
+                    iMultipleProgressbar[index]['isClicked']=true
+                    setMultipleProgressbar([...iMultipleProgressbar])
+                }, 500);
+              }
               return (
                 <>
                   {file["isComplete"] ? (
@@ -546,30 +602,61 @@ function DropZone(props) {
                         <DoneIcon
                           style={{ color: "green", fontWeight: "bolder" }}
                         ></DoneIcon>{" "}
-                        {file["docMovedMessage"]} {" "}
+                        {file["docMovedMessage"]}{" "}
                         <a
+                          id={"fileLink_" + index}
                           href="#"
                           className="ahrefcls"
                           onClick={(event) => {
-                            props.handleSetValuetoDD(
-                              file["docType"],
-                              file["docTypeId"],
-                              file["ScandocId"],
-                              file["Confident_Score"]
-                            );
+                            handleAPI({
+                              name: "GetUploadedDetails",
+                              params: {
+                                LoanId: LoanId,
+                                DoctypeId: file["ScandocId"],
+                              },
+                            })
+                              .then((response) => {
+                                // console.log(response);
+                                response = JSON.parse(response);
 
-                            if (Number(file["IsSaved"]) !== 1) {
-                              setEnableSave(true);
-                              if (file["docType"]?.toLowerCase() === "paystub")
-                                setTimeout(() => {
-                                  fnCheckBorrEntityExistsValidation(
-                                    1,
-                                    file["ParsedJson"]
-                                  );
-                                }, 10);
-                            } else setEnableSave(false);
+                                response.forEach((e) => {
+                                  let docType = e.SDT[0];
+                                  delete e.SDT;
+                                  e["ShortName"] = docType["ShortName"];
+                                });
+                                if (!file.AlreadyClicked)
+                                  fnUpdateDocdeatails(response);
+                                file.AlreadyClicked = true;
 
-                            event.preventDefault();
+                                props.handleSetValuetoDD(
+                                  file["docType"],
+                                  file["docTypeId"],
+                                  file["ScandocId"],
+                                  file["Confident_Score"],
+                                  1,
+                                  response
+                                );
+
+                                if (Number(file["IsSaved"]) !== 1) {
+                                  setEnableSave(true);
+                                  if (
+                                    file["docType"]?.toLowerCase() === "paystub"
+                                  )
+                                    setTimeout(() => {
+                                      fnCheckBorrEntityExistsValidation(
+                                        1,
+                                        file["ParsedJson"]
+                                      );
+                                    }, 10);
+                                } else setEnableSave(false);
+
+                                event.preventDefault();
+                                // console.log(response);
+                              })
+                              .catch((error) => {
+                                //debugger;
+                                console.log("error", error);
+                              });
                           }}
                           style={{
                             verticalAlign: "top",

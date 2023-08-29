@@ -14,6 +14,8 @@ import MultipleSelectCheckmarks from "./MultipleSelect";
 import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
 import Button from "@mui/material/Button";
+import CustomInputAutocomplete from "./DropDownWithTextBox";
+
 import {
   handleAPI,
   TextBox,
@@ -32,7 +34,11 @@ import MenuOptions from "./MenuOption";
 
 import CustomizedSnackbars from "./MessageComponents";
 import ConditionalRemainingCompleteModel from "./ConditionRemainingCompleted";
-import { CurrencyExchange, Unarchive } from "@mui/icons-material";
+import {
+  CurrencyExchange,
+  DeblurOutlined,
+  Unarchive,
+} from "@mui/icons-material";
 import ChangeLog from "./ChangeLog";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
@@ -83,6 +89,7 @@ function Form() {
   const [uploadedDocument, setUploadedDocument] = useState([]);
   const [UploadedDocValue, setUploadedDocValue] = useState("0");
   const [DocChangeFlag, setDocChangeFlag] = useState(false);
+  const [BorrowerList, setBorrowerList] = useState([]);
 
   const [TaskId, setTaskId] = useState("");
   const [ExtractResult, setExtractResult] = useState("");
@@ -168,6 +175,58 @@ function Form() {
     setConditionalRemainingModel(true);
   }
 
+  const WhichBorrowerList = ({ fields, index }) => {
+    debugger;
+
+    // let iBorrowerList = BorrowerList,
+    //   // .filter((item) => item.CustId > 0)
+    //   CheckBorrExists = BorrowerList.filter(
+    //     (item) => item.Name.trim() === fields.Value?.trim()
+    //   ),
+    //   iSelectVaue = "0";
+
+    // if (CheckBorrExists.length === 0 && fields.Value?.trim() !== "") {
+    //   iBorrowerList.push({
+    //     CustId: -BorrowerList.length,
+    //     Name: fields.Value?.trim(),
+    //   });
+
+    //   iSelectVaue = -BorrowerList.length;
+    // } else if (CheckBorrExists.length > 0) {
+    //   iSelectVaue = CheckBorrExists[0].CustId;
+    // }
+
+
+    return (
+      <>
+      <CustomInputAutocomplete
+        label="Which Borrower"
+        options={BorrowerList}
+        value="CustId"
+        text="Name"
+        name="Which Borrower"
+        SelectedVal={fields.Value || ""}
+        isIncludeSelect={true}
+        validationRequired={false}
+        onChange={(e) => {
+          debugger;
+          let Name =e.currentTarget.textContent || e.target.textContent,
+            DocDbFields_ = DocDbFields,CheckBorrExists = BorrowerList.filter(
+              (item) => item.Name.trim() === Name?.trim()
+            );
+if(CheckBorrExists.length>0)
+          DocDbFields_[index]["Value"] =
+          CheckBorrExists[0]['CustId'] == 0 ? "" : Name;
+
+          setDocDbFields([...[], ...DocDbFields_]);
+          // debugger;
+          setEnableSave(true);
+        }}
+      />
+      </>
+    );
+  };
+
   const handleMultiSelect = (val) => {
     setAssetTypeOptionValue(val);
     setEnableSave(true);
@@ -205,7 +264,7 @@ function Form() {
           .replace("#", "")
           .replace("?", "")
           .replace("%", ""),
-        AssetTypeOptions: val_,
+        AssetTypeOptions: val_ || [],
         ScandocId: scandocId,
         DocTypeId: DocTypeValue,
         OriginalJSON: RespOrg.replace(/undefined\//g, ""),
@@ -373,6 +432,7 @@ function Form() {
   }, [ConditionalRemainingModel]);
 
   const formatCurrency = (value) => {
+    if (value == "" || value == "$" || value == undefined) return "";
     let num = value.toString().replace("$", "").replace(",", ""),
       numParts = num.split("."),
       dollars = numParts[0],
@@ -648,6 +708,7 @@ function Form() {
     setDescription(e.target.selectedOptions[0].text);
     if (value !== 169) fnGetDocTypeDBField(value);
     // document.getElementById("spnResubmitdiv").style.display = "inline-block";
+    // setBorrowerList(BorrowerList.filter((item) => item.CustId > 0));
   };
 
   const fnBorrEntityValueChange = (e) => {
@@ -778,8 +839,11 @@ function Form() {
         let AssetOption = [...AssetOption1, ...AssetOption2];
         setAssetTypeOPtions(AssetOption);
 
-        let UploadedDocFiles = JSON.parse(response["Table"][0].Column2) || [],
-          totalArr = JSON.parse(response["Table1"][0].Result) || [],
+        let UploadedDocFiles = JSON.parse(response["Table"][0].Column2) || [];
+        UploadedDocFiles = UploadedDocFiles.filter(
+          (item) => item.IsFromDocUploadForm === "1"
+        );
+        let totalArr = JSON.parse(response["Table1"][0].Result) || [],
           resultArr = totalArr.filter(
             (obj1) =>
               !UploadedDocFiles.some(
@@ -796,6 +860,10 @@ function Form() {
         docDec = docDec.filter((item) => Number(item.ScandocId) !== 0);
 
         docDec = [...docDec, ...resultArr];
+
+        let BorrowerList = JSON.parse(response["Table3"][0].BorrowerList) || [];
+
+        setBorrowerList(BorrowerList);
 
         let FilteredPassedValidation1 = totalArr.filter(
           (e) => Number(e.PassedValidation) === 1
@@ -953,6 +1021,12 @@ function Form() {
       });
   }, []);
 
+  function fnUpdateDocdeatails(ResDoc) {
+    setDocDetails([...ResDoc, ...DocDetails]);
+
+    setUploadedDocument([...ResDoc, ...uploadedDocument]);
+  }
+
   function fnGetImagefromServer(ScandocId) {
     handleAPI({
       name: "GetUploadedImageWithJSON",
@@ -979,7 +1053,7 @@ function Form() {
           Json.toString().indexOf("status code") === -1 &&
           Json.toString().indexOf("Error") === -1
         )
-          setOriginalResJSON(Json);
+          setOriginalResJSON(Json.replace('VOE line 12 B. Commission Income. ','VOE line 12 B. Commission Income.'));
         else setOriginalResJSON("");
 
         // setTimeout(() => {
@@ -1001,7 +1075,9 @@ function Form() {
     docType,
     OrgDocId,
     iScanDocIds,
-    Confident_Score
+    Confident_Score,
+    flagg,
+    UpdatedDocDet
   ) => {
     let docType_ = docType;
     if (!docType) docType = "miscellaneous";
@@ -1045,9 +1121,27 @@ function Form() {
           UploadedDocTypeId = Filterdoctype[0].Id;
         }
 
-        let FilterDoc = DocDetails.filter(
-          (item) => Number(item.DocTypeId) === Number(UploadedDocTypeId)
-        );
+        let FilterDoc;
+        if (flagg === 1) {
+          if (MultipleProgressbar.length > 0) {
+            let iiFilterDoc = DocType.filter(
+              (item) => item.Id === Number(DocTypeValue)
+            );
+            if (Number(UpdatedDocDet[0].ScanDocId) === scandocId) {
+              UpdatedDocDet[0].DocTypeId = Number(DocTypeValue);
+              UpdatedDocDet[0].ShortName = iiFilterDoc[0].DocType;
+              UpdatedDocDet[0].Descript = iiFilterDoc[0].DocType;
+              UpdatedDocDet[0].Classified_Doctype = iiFilterDoc[0].DocType;
+              UpdatedDocDet[0].DocName = iiFilterDoc[0].DocType;
+            }
+          }
+
+          FilterDoc = UpdatedDocDet;
+        } else {
+          FilterDoc = DocDetails.filter(
+            (item) => Number(item.DocTypeId) === Number(UploadedDocTypeId)
+          );
+        }
         //  console.log(FilterDoc);
         if (FilterDoc.length > 0) {
           if (Number(FilterDoc[0].DocTypeId) === Number(169))
@@ -1057,7 +1151,8 @@ function Form() {
               ...activeDropzone,
               ...{ Id: FilterDoc[0].ID, DocTypeId: FilterDoc[0].DocTypeId },
             },
-            1
+            1,
+            FilterDoc
           );
 
           let containsNumber = /\d/.test(Confident_Score);
@@ -1065,9 +1160,11 @@ function Form() {
           if (containsNumber)
             percentageValue = (Confident_Score * 100).toFixed(0) + "%";
 
-          document.querySelector("#spnConfidenceScore").innerHTML =
-            "<label>Confidence Score : </label>" + " " + percentageValue ||
-            "" + " | " + "<label>DocType : </label>" + " " + docType_;
+          if (document.querySelector("#spnConfidenceScore") !== null)
+            document.querySelector("#spnConfidenceScore").innerHTML =
+              "<label>Confidence Score : </label>" + " " + percentageValue ||
+              "" + " | " + "<label>DocType : </label>" + " " + docType_ ||
+              "null";
 
           // setConfidenceScoreDetails(
           //   document.querySelector("#spnConfidenceScore").innerHTML
@@ -1075,7 +1172,7 @@ function Form() {
         }
       }
     }
-    fnPageload(LoanId, userId, userType, 1, UploadedDocTypeId, iScanDocIds);
+    // fnPageload(LoanId, userId, userType, 1, UploadedDocTypeId, iScanDocIds);
   };
 
   function fnGetLeaderLineSetup(obj) {
@@ -1085,9 +1182,9 @@ function Form() {
       setResJSON(obj);
       let ele = [],
         PdfEle = Array.from(document.querySelectorAll(".textLayer span")),
-        KeyValues = Object.values(obj).map((val) =>
-          val.toString().replaceAll("$", "").toLowerCase()
-        );
+        KeyValues = Object.values(obj).map((val) => {
+          if (val !== null) val.toString().replaceAll("$", "").toLowerCase();
+        });
 
       ele = PdfEle.filter(
         (ele) =>
@@ -1282,6 +1379,62 @@ function Form() {
   //     }
   //   }
   // }, [ResJSON]);
+
+  const formatDateTimeNew = (date) => {
+    if (date === "" || date === undefined) return "";
+
+    const currentDate = new Date();
+
+    const currentYear = currentDate.getFullYear().toString();
+
+    let [month, day, year] = date.split("/");
+
+    if (!day) {
+      day = month;
+
+      month = currentDate.getMonth() + 1;
+    }
+
+    const parsedMonth = parseInt(month);
+
+    const parsedDay = parseInt(day);
+
+    const isValidMonth =
+      !isNaN(parsedMonth) && parsedMonth >= 1 && parsedMonth <= 12;
+
+    const isValidDay = !isNaN(parsedDay) && parsedDay >= 1 && parsedDay <= 31;
+
+    if (!isValidMonth || !isValidDay) {
+      const formattedCurrentMonth = (currentDate.getMonth() + 1)
+
+        .toString()
+
+        .padStart(2, "0");
+
+      const formattedCurrentDay = currentDate
+
+        .getDate()
+
+        .toString()
+
+        .padStart(2, "0");
+
+      return `${formattedCurrentMonth}/${formattedCurrentDay}/${currentYear}`;
+    }
+
+    if (year && year.length === 2) {
+      year = currentYear.slice(0, 2) + year;
+    } else if (!year) {
+      year = currentYear;
+    }
+
+    const formattedMonth = parsedMonth.toString().padStart(2, "0");
+
+    const formattedDay = parsedDay.toString().padStart(2, "0");
+
+    return `${formattedMonth}/${formattedDay}/${year}`;
+  };
+
   function handleActivedropzone(activeDropzone, flag, iuploadedDocument) {
     debugger;
     if (flag === 1) activeDropzone.PreventScroll = true;
@@ -1308,7 +1461,7 @@ function Form() {
     // debugger;
     if (activeScandocId.length > 0) {
       activeScandocId = activeScandocId[0].ScanDocId || 0;
-      if (activeScandocId !== 0)
+      if (activeScandocId != 0)
         handleDocumentUploadChange(activeScandocId, flag, iuploadedDocument);
       setShowTools(1);
 
@@ -1328,7 +1481,7 @@ function Form() {
           document.getElementById("spnMonthlyIncomeMain").innerHTML =
             UploadedMonthlyIncome[0]?.IncomeDetails || "";
         }
-
+      setIncomeCalcProgres(false);
       setTimeout(() => {
         UploadedMonthlyIncome = uploadedDocument.filter(
           (item) => item.ScanDocId == activeScandocId
@@ -1486,6 +1639,17 @@ function Form() {
     return formattedDate;
   }
 
+  function trimObjectKeys(obj) {
+    const trimmedObject = {};
+    for (const key in obj) {
+      if (Object.hasOwnProperty.call(obj, key)) {
+        const trimmedKey = key.trim();
+        trimmedObject[trimmedKey] = obj[key];
+      }
+    }
+    return trimmedObject;
+  }
+
   function fnGetDocTypeDBField(value, iScanDocId, flag) {
     let ParsedJson_ = {};
     if (OriginalResJSON !== "")
@@ -1503,6 +1667,7 @@ function Form() {
       })
         .then((response) => {
           console.log(response);
+          debugger
           let DocDbFields_ =
             JSON.parse(JSON.parse(response).Table[0].Column1) !== null
               ? JSON.parse(JSON.parse(response).Table[0].Column1)
@@ -1516,12 +1681,14 @@ function Form() {
           setDocDbFields(DocDbFields_);
           setOrgDocDbFields(DocDbFields__);
           if (DocDbFields_.length > 0) {
+            let arr = DocDbFields_.filter(
+              (item) => item.DisplayName === "Type of Account"
+            )
+            if(arr.length>0)
             setAssetTypeOptionValue(
-              DocDbFields_.filter(
-                (item) => item.DisplayName === "Type of Account"
-              )[0].Value.split(", ")
+              arr[0].Value.split(", ")
             );
-            setUpdateMappingonlyonNew(true);
+            setUpdateMappingonlyonNew(!UpdateMappingonlyonNew);
             // setTimeout(() => {
             // fnMapExtractionJsonField(value);
             // }, 4000);
@@ -1598,111 +1765,172 @@ function Form() {
 
   function fnMapExtractionJsonField(doctypeId) {
     if (OriginalResJSON) {
+      
       let ParsedJson;
       if (OriginalResJSON.indexOf("extraction_json") > -1)
         ParsedJson = JSON.parse(OriginalResJSON)["extraction_json"] ?? {};
+      if (ParsedJson !== undefined) {
+        if (
+          ParsedJson.financial_institution !== undefined &&
+          Number(doctypeId) === Number(43)
+        ) {
+          console.log(ParsedJson);
+          DocDbFields.forEach((item) => {
+            if (Number(item.Dbfieldid) === Number(3058))
+              item.Value = ParsedJson.financial_institution || "";
 
-      if (
-        ParsedJson.financial_institution !== undefined &&
-        Number(doctypeId) === Number(43)
-      ) {
-        console.log(ParsedJson);
-        DocDbFields.forEach((item) => {
-          if (Number(item.Dbfieldid) === Number(3058))
-            item.Value = ParsedJson.financial_institution || "";
+            if (Number(item.Dbfieldid) === Number(8386))
+              item.Value =
+                fndataformat(ParsedJson.beginning_date).replace(
+                  /undefined\//g,
+                  ""
+                ) || "";
 
-          if (Number(item.Dbfieldid) === Number(8386))
-            item.Value =
-              fndataformat(ParsedJson.beginning_date).replace(
-                /undefined\//g,
-                ""
-              ) || "";
+            if (Number(item.Dbfieldid) === Number(8387))
+              item.Value =
+                fndataformat(ParsedJson.ending_date).replace(
+                  /undefined\//g,
+                  ""
+                ) || "";
 
-          if (Number(item.Dbfieldid) === Number(8387))
-            item.Value =
-              fndataformat(ParsedJson.ending_date).replace(
-                /undefined\//g,
-                ""
-              ) || "";
+            if (Number(item.Dbfieldid) === Number(3052))
+              item.Value = ParsedJson.account_holder[0] || "";
 
-          if (Number(item.Dbfieldid) === Number(3052))
-            item.Value = ParsedJson.account_holder[0] || "";
+            if (Number(item.Dbfieldid) === Number(3061))
+              item.Value = ParsedJson.account_number[0] || "";
 
-          if (Number(item.Dbfieldid) === Number(3061))
-            item.Value = ParsedJson.account_number[0] || "";
+            // if (
+            //   Number(item.Dbfieldid) === Number(3062) &&
+            //   ParsedJson.current_balance[0] !== undefined
+            // )
+            //   item.Value = ParsedJson.current_balance[0] || "";
 
-          // if (
-          //   Number(item.Dbfieldid) === Number(3062) &&
-          //   ParsedJson.current_balance[0] !== undefined
-          // )
-          //   item.Value = ParsedJson.current_balance[0] || "";
+            if (
+              Number(item.Dbfieldid) === Number(3062) &&
+              ParsedJson?.account !== "" &&
+              ParsedJson?.account !== undefined
+            ) {
+              // item.Value = ParsedJson.current_balance[0] || "";
+              let CurrentBalChk = 0,
+                CurrentBalSav = 0,
+                CurrentBalReg = 0;
+              ParsedJson.account.forEach((element) => {
+                if (element.type === "Checking")
+                  CurrentBalChk = element.current_balance
+                    .replace("$", "")
+                    .replace(",", "");
 
-          if (
-            Number(item.Dbfieldid) === Number(3062) &&
-            ParsedJson?.account !== "" &&
-            ParsedJson?.account !== undefined
-          ) {
-            // item.Value = ParsedJson.current_balance[0] || "";
-            let CurrentBalChk = 0,
-              CurrentBalSav = 0;
-            ParsedJson.account.forEach((element) => {
-              if (element.type === "Checking")
-                CurrentBalChk = element.current_balance
-                  .replace("$", "")
-                  .replace(",", "");
+                if (element.type === "Saving")
+                  CurrentBalSav = element.current_balance
+                    .replace("$", "")
+                    .replace(",", "");
 
-              if (element.type === "Saving")
-                CurrentBalSav = element.current_balance
-                  .replace("$", "")
-                  .replace(",", "");
+                if (element.type === "Regular")
+                  CurrentBalReg = element.current_balance
+                    .replace("$", "")
+                    .replace(",", "");
 
-              item.Value = formatCurrency(CurrentBalChk + CurrentBalSav);
-            });
-          }
+                item.Value = formatCurrency(
+                  CurrentBalChk + CurrentBalSav + CurrentBalReg
+                );
+              });
+            }
 
-          if (Number(item.Dbfieldid) === Number(8388))
-            item.Value =
-              ParsedJson.qualifying_balance[0] ||
-              ParsedJson.qualifying_balance ||
-              "";
-          if (
-            Number(item.Dbfieldid) === Number(3059) &&
-            ParsedJson?.account_type !== "" &&
-            ParsedJson?.account_type !== undefined
-          ) {
-            const typeAcc = ParsedJson?.account_type?.join(", ");
-            // item.Value = [typeAcc];
+            if (Number(item.Dbfieldid) === Number(8388))
+              item.Value =
+                ParsedJson.qualifying_balance[0] ||
+                ParsedJson.qualifying_balance ||
+                "";
+            if (
+              Number(item.Dbfieldid) === Number(3059) &&
+              ParsedJson?.account_type !== "" &&
+              ParsedJson?.account_type !== undefined
+            ) {
+              const typeAcc = ParsedJson?.account_type?.join(", ");
+              // item.Value = [typeAcc];
 
-            // setAssetTypeOptionValue(typeAcc);
+              // setAssetTypeOptionValue(typeAcc);
 
-            setAssetTypeOptionValue(typeAcc.split(", "));
-            console.log(typeAcc);
-          }
+              setAssetTypeOptionValue(typeAcc.split(", "));
+              console.log(typeAcc);
+            }
 
-          if (
-            Number(item.Dbfieldid) === Number(3059) &&
-            ParsedJson?.account !== "" &&
-            ParsedJson?.account !== undefined
-          ) {
-            let typeAcc;
-            // const typeAcc = ParsedJson?.account?.join(", ");
-            ParsedJson.account.forEach((element) => {
-              typeAcc = element.type + ", ";
-              console.log(element);
-            });
+            if (
+              Number(item.Dbfieldid) === Number(3059) &&
+              ParsedJson?.account !== "" &&
+              ParsedJson?.account !== undefined
+            ) {
+              let typeAcc;
+              // const typeAcc = ParsedJson?.account?.join(", ");
+              ParsedJson.account.forEach((element) => {
+                typeAcc = element.type + ", ";
+                console.log(element);
+              });
 
-            // item.Value = [typeAcc];
+              // item.Value = [typeAcc];
 
-            // setAssetTypeOptionValue(typeAcc);
+              // setAssetTypeOptionValue(typeAcc);
 
-            setAssetTypeOptionValue(typeAcc.split(", "));
-            console.log(typeAcc);
-          }
-        });
+              setAssetTypeOptionValue(typeAcc.split(", "));
+              console.log(typeAcc);
+            }
+          });
 
-        setDocDbFields(DocDbFields);
-        setUpdateMappingonlyonNew(false);
-        setOrgDocDbFields(structuredClone(DocDbFields));
+          setDocDbFields(DocDbFields);
+          setUpdateMappingonlyonNew(false);
+          setOrgDocDbFields(structuredClone(DocDbFields));
+        }
+
+        if (Number(doctypeId) === Number(23)) {
+          console.log(ParsedJson);
+          DocDbFields.forEach((item) => {
+            if (Number(item.Dbfieldid) === Number(7652))
+              item.Value =
+                formatCurrency(ParsedJson["VOE line 12 B Base Pay."]) || "";
+
+            if (Number(item.Dbfieldid) === Number(7655))
+              item.Value =
+                formatCurrency(ParsedJson["VOE line 12 B. Overtime Income."]) ||
+                "";
+
+            if (Number(item.Dbfieldid) === Number(7656))
+              item.Value =
+                formatCurrency(
+                  ParsedJson["VOE line 12 B. Commission Income."]
+                ) || "";
+
+            if (Number(item.Dbfieldid) === Number(7657))
+              item.Value =
+                formatCurrency(ParsedJson["VOE line 12 B. Bonus Income."]) ||
+                "";
+
+            if (Number(item.Dbfieldid) === Number(7792))
+              item.Value = ParsedJson.Year || "";
+
+            if (Number(item.Dbfieldid) === Number(2884))
+              item.Value = ParsedJson["Which Borrower"] || "";
+
+            if (Number(item.Dbfieldid) === Number(2891))
+              item.Value = ParsedJson["Employer Name"] || "";
+
+            if (Number(item.Dbfieldid) === Number(7793))
+              item.Value = formatDateTimeNew(ParsedJson["VOE Paid Thru"]) || "";
+
+            if (Number(item.Dbfieldid) === Number(2893))
+              item.Value = formatDateTimeNew(ParsedJson["Employed From"]) || "";
+
+            if (Number(item.Dbfieldid) === Number(2896))
+              item.Value = ParsedJson["Job Title"] || "";
+
+            if (Number(item.Dbfieldid) === Number(6529))
+              item.Value =
+                ParsedJson["Probability of Continued Employment"] || "";
+          });
+
+          setDocDbFields(DocDbFields);
+          setUpdateMappingonlyonNew(false);
+          setOrgDocDbFields(structuredClone(DocDbFields));
+        }
       }
     }
   }
@@ -1763,6 +1991,14 @@ function Form() {
               //   OriginalJSON_.account_type = AssetTypeOptionValue;
               // }
             });
+          }
+
+          if (Number(DocTypeValue) === 23) {
+            console.log("DocDbFields", DocDbFields);
+            OriginalJSON_ = DocDbFields.reduce((result, item) => {
+              result[item.DisplayName] = item.Value;
+              return result;
+            }, {});
           }
         }
       }
@@ -1878,6 +2114,7 @@ function Form() {
   const isUploadedDocChecked = () => {
     return { checked: !false };
   };
+
   //DOM Section
   return (
     <>
@@ -1969,6 +2206,7 @@ function Form() {
                 fnCheckBorrEntityExistsValidation={
                   fnCheckBorrEntityExistsValidation
                 }
+                fnUpdateDocdeatails={fnUpdateDocdeatails}
                 setFeedBackCollection={setFeedBackCollection}
                 setMultipleProgressbar={setMultipleProgressbar}
                 MultipleProgressbar={MultipleProgressbar}
@@ -2028,6 +2266,7 @@ function Form() {
                         fnCheckBorrEntityExistsValidation={
                           fnCheckBorrEntityExistsValidation
                         }
+                        fnUpdateDocdeatails={fnUpdateDocdeatails}
                         setFeedBackCollection={setFeedBackCollection}
                         setMultipleProgressbar={(fileDetails) => {
                           let tempDocDetaisls = DocDetails;
@@ -2574,13 +2813,24 @@ function Form() {
                             Typevalue="TypeOption"
                             TypeText="TypeDesc"
                           ></MultipleSelectCheckmarks>
-                        ) : (
+                        ) 
+                          // : fields.DisplayName === "Which Borrower" ? (
+                          //   <WhichBorrowerList fields={fields} index={index} />
+                          //   // <>
+                          //   //   {WhichBorrowerList({
+                          //   //     fields,
+                          //   //     index,
+                          //   //   })}
+                          //   // </>
+                          // ) 
+                          : (
                           <DynamicTextBox
                             name={fields.DisplayName}
                             value={fields["Value"] || ""}
                             onChange={(obj) => {
                               let { name, value } = obj.target,
                                 DocDbFields_ = DocDbFields;
+
                               DocDbFields_[index]["Value"] = value;
 
                               setDocDbFields([...[], ...DocDbFields_]);
@@ -2593,10 +2843,40 @@ function Form() {
                             onblur={() => {
                               if (
                                 fields.DisplayName.toString().indexOf(
+                                  "Paid Thru"
+                                ) > -1 ||
+                                fields.DisplayName.toString().indexOf(
+                                  "Employed From"
+                                ) > -1
+                              ) {
+                                let DateformattedValue = formatDateTimeNew(
+                                    fields["Value"]
+                                  ),
+                                  DocDbFields_ = DocDbFields;
+                                DocDbFields_[index]["Value"] =
+                                  DateformattedValue;
+
+                                setDocDbFields([...[], ...DocDbFields_]);
+                              }
+
+                              if (
+                                fields.DisplayName.toString().indexOf(
                                   "Balance"
                                 ) > -1 ||
                                 fields.DisplayName.toString().indexOf(
                                   "Amount"
+                                ) > -1 ||
+                                fields.DisplayName.toString().indexOf(
+                                  "Base Pay"
+                                ) > -1 ||
+                                fields.DisplayName.toString().indexOf(
+                                  "Overtime Income"
+                                ) > -1 ||
+                                fields.DisplayName.toString().indexOf(
+                                  "Commission Income."
+                                ) > -1 ||
+                                fields.DisplayName.toString().indexOf(
+                                  "Bonus Income"
                                 ) > -1
                               ) {
                                 let formattedValue = formatCurrency(
@@ -2719,6 +2999,16 @@ function Form() {
                         // console.log("FeedBack");
                       },
                     }),
+
+                  {
+                    title: "Scanned Images",
+                    click: (e) => {
+                      openNewWindow(
+                        `https://www.directcorp.com/BorrowerApplication/Presentation/Webforms/ScanLoanDocs_DataPipeline.aspx?SessionID=${SessionId}&LoanId=${LoanId}&CustId=${userId}`,
+                        1
+                      );
+                    },
+                  },
 
                   {
                     title: "Save Form Size and Position",
@@ -2872,6 +3162,26 @@ function Form() {
               className={`btn ${EnableSave ? "btn-primary" : "btnDisable"}`}
               disabled={!EnableSave}
               onClick={() => {
+                console.log("MultipleProgressbar:", MultipleProgressbar);
+                console.log("DocType", DocType);
+                console.log("UploadedDocument", uploadedDocument);
+
+                let FilterDoc = "";
+                if (MultipleProgressbar.length > 0) {
+                  FilterDoc = DocType.filter(
+                    (item) => item.Id === Number(DocTypeValue)
+                  );
+                }
+
+                MultipleProgressbar.forEach((element) => {
+                  if (Number(element.ScandocId) === scandocId) {
+                    element.docMovedMessage = `This document is recognized as ${FilterDoc[0].DocType} and was moved to ${FilterDoc[0].DocType} section.`;
+                    element.docTypeId = Number(DocTypeValue);
+                    element.docType = FilterDoc[0].DocType;
+                  }
+                });
+                setMultipleProgressbar(MultipleProgressbar);
+
                 if (Number(DocTypeValue) !== 169) fnSaveOtherDBField();
                 else fnCheckBorrEntityExistsValidation();
               }}
