@@ -40,6 +40,7 @@ import {
   Unarchive,
 } from "@mui/icons-material";
 import ChangeLog from "./ChangeLog";
+import { grey } from "@mui/material/colors";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 
@@ -162,6 +163,7 @@ function Form() {
   const [ValidationMsg, setValidationMsg] = React.useState("");
   const [CondCompleted, setCondCompleted] = React.useState([]);
   const [DocDbFields, setDocDbFields] = React.useState([]);
+  const [DocDbFieldsVOE, setDocDbFieldsVOE] = React.useState([]);
   const [OrgDocDbFields, setOrgDocDbFields] = React.useState([]);
   const [OrgDocTypeValue, setOrgDocTypeValue] = useState("0");
 
@@ -196,33 +198,33 @@ function Form() {
     //   iSelectVaue = CheckBorrExists[0].CustId;
     // }
 
-
     return (
       <>
-      <CustomInputAutocomplete
-        label="Which Borrower"
-        options={BorrowerList}
-        value="CustId"
-        text="Name"
-        name="Which Borrower"
-        SelectedVal={fields.Value || ""}
-        isIncludeSelect={true}
-        validationRequired={false}
-        onChange={(e) => {
-          debugger;
-          let Name =e.currentTarget.textContent || e.target.textContent,
-            DocDbFields_ = DocDbFields,CheckBorrExists = BorrowerList.filter(
-              (item) => item.Name.trim() === Name?.trim()
-            );
-if(CheckBorrExists.length>0)
-          DocDbFields_[index]["Value"] =
-          CheckBorrExists[0]['CustId'] == 0 ? "" : Name;
+        <CustomInputAutocomplete
+          label="Which Borrower"
+          options={BorrowerList}
+          value="CustId"
+          text="Name"
+          name="Which Borrower"
+          SelectedVal={fields.Value || ""}
+          isIncludeSelect={true}
+          validationRequired={false}
+          onChange={(e) => {
+            debugger;
+            let Name = e.currentTarget.textContent || e.target.textContent,
+              DocDbFields_ = DocDbFields,
+              CheckBorrExists = BorrowerList.filter(
+                (item) => item.Name.trim() === Name?.trim()
+              );
+            if (CheckBorrExists.length > 0)
+              DocDbFields_[index]["Value"] =
+                CheckBorrExists[0]["CustId"] == 0 ? "" : Name;
 
-          setDocDbFields([...[], ...DocDbFields_]);
-          // debugger;
-          setEnableSave(true);
-        }}
-      />
+            setDocDbFields([...[], ...DocDbFields_]);
+            // debugger;
+            setEnableSave(true);
+          }}
+        />
       </>
     );
   };
@@ -1053,7 +1055,12 @@ if(CheckBorrExists.length>0)
           Json.toString().indexOf("status code") === -1 &&
           Json.toString().indexOf("Error") === -1
         )
-          setOriginalResJSON(Json.replace('VOE line 12 B. Commission Income. ','VOE line 12 B. Commission Income.'));
+          setOriginalResJSON(
+            Json.replace(
+              "VOE line 12 B. Commission Income. ",
+              "VOE line 12 B. Commission Income."
+            )
+          );
         else setOriginalResJSON("");
 
         // setTimeout(() => {
@@ -1667,7 +1674,7 @@ if(CheckBorrExists.length>0)
       })
         .then((response) => {
           console.log(response);
-          debugger
+          debugger;
           let DocDbFields_ =
             JSON.parse(JSON.parse(response).Table[0].Column1) !== null
               ? JSON.parse(JSON.parse(response).Table[0].Column1)
@@ -1679,15 +1686,19 @@ if(CheckBorrExists.length>0)
               : [];
           // setDocDbFields([...DocDbFields, ...DocDbFields_]);
           setDocDbFields(DocDbFields_);
+
+          // if (DocTypeValue == 23)
+          //   setDocDbFieldsVOE(
+          //     JSON.parse(JSON.stringify([...DocDbFields_, ...DocDbFields_]))
+          //   );
+
           setOrgDocDbFields(DocDbFields__);
           if (DocDbFields_.length > 0) {
             let arr = DocDbFields_.filter(
               (item) => item.DisplayName === "Type of Account"
-            )
-            if(arr.length>0)
-            setAssetTypeOptionValue(
-              arr[0].Value.split(", ")
             );
+            if (arr.length > 0)
+              setAssetTypeOptionValue(arr[0].Value.split(", "));
             setUpdateMappingonlyonNew(!UpdateMappingonlyonNew);
             // setTimeout(() => {
             // fnMapExtractionJsonField(value);
@@ -1717,6 +1728,26 @@ if(CheckBorrExists.length>0)
       // return;
     }
   }
+
+  const FormatPhone = (PhoneNo) => {
+
+    if (PhoneNo != "" && PhoneNo != undefined) {  
+      if (PhoneNo.indexOf("@") == -1) PhoneNo = PhoneNo.replaceAll("-", "");  
+      PhoneNo = PhoneNo.replaceAll("(", "").replaceAll(")", "").replaceAll(" ", "");
+  
+      if (PhoneNo.indexOf("@") == -1 && Number(PhoneNo) && PhoneNo.length === 10) {  
+        PhoneNo = PhoneNo.replace(/D/g, "");  
+        if (PhoneNo.length < 10) {  
+          return PhoneNo; 
+        }  
+  
+        let p = /^([\d]{3})([\d]{3})([\d]{4,})$/.exec(PhoneNo);  
+        PhoneNo = "(" + p[1] + ") " + p[2] + "-" + p[3];  
+        return PhoneNo;  
+      }  
+    }  
+    return PhoneNo;  
+  };
 
   function fnFrequencyValue(FreqValue) {
     if (!isNaN(FreqValue) || FreqValue === undefined) return FreqValue;
@@ -1765,7 +1796,6 @@ if(CheckBorrExists.length>0)
 
   function fnMapExtractionJsonField(doctypeId) {
     if (OriginalResJSON) {
-      
       let ParsedJson;
       if (OriginalResJSON.indexOf("extraction_json") > -1)
         ParsedJson = JSON.parse(OriginalResJSON)["extraction_json"] ?? {};
@@ -1778,6 +1808,10 @@ if(CheckBorrExists.length>0)
           DocDbFields.forEach((item) => {
             if (Number(item.Dbfieldid) === Number(3058))
               item.Value = ParsedJson.financial_institution || "";
+            
+            if (Number(item.Dbfieldid) === Number(4652))
+              item.Value = FormatPhone(ParsedJson["Agent Phone"]) || "";
+              
 
             if (Number(item.Dbfieldid) === Number(8386))
               item.Value =
@@ -1877,59 +1911,266 @@ if(CheckBorrExists.length>0)
           });
 
           setDocDbFields(DocDbFields);
+          // if (DocTypeValue == 23)
+          //   setDocDbFieldsVOE(
+          //     JSON.parse(JSON.stringify([...DocDbFields, ...DocDbFields]))
+          //   );
+
           setUpdateMappingonlyonNew(false);
           setOrgDocDbFields(structuredClone(DocDbFields));
-        }
-
-        if (Number(doctypeId) === Number(23)) {
+        } else if (Number(doctypeId) === Number(23)) {
           console.log(ParsedJson);
+          
+          if(ParsedJson.length){
           DocDbFields.forEach((item) => {
             if (Number(item.Dbfieldid) === Number(7652))
               item.Value =
-                formatCurrency(ParsedJson["VOE line 12 B Base Pay."]) || "";
+                formatCurrency(ParsedJson[0]["VOE line 12 B Base Pay."]) || "";
 
             if (Number(item.Dbfieldid) === Number(7655))
               item.Value =
-                formatCurrency(ParsedJson["VOE line 12 B. Overtime Income."]) ||
+                formatCurrency(ParsedJson[0]["VOE line 12 B. Overtime Income."]) ||
                 "";
 
             if (Number(item.Dbfieldid) === Number(7656))
               item.Value =
                 formatCurrency(
-                  ParsedJson["VOE line 12 B. Commission Income."]
+                  ParsedJson[0]["VOE line 12 B. Commission Income."]
                 ) || "";
 
             if (Number(item.Dbfieldid) === Number(7657))
               item.Value =
-                formatCurrency(ParsedJson["VOE line 12 B. Bonus Income."]) ||
+                formatCurrency(ParsedJson[0]["VOE line 12 B. Bonus Income."]) ||
                 "";
 
+                if (Number(item.Dbfieldid) === Number(8407))
+                item.Value =
+                  formatCurrency(ParsedJson[0]["Last Pay Increase Amount"]) ||
+                  "";
+
+                  if (Number(item.Dbfieldid) === Number(8406))
+                  item.Value =
+                  formatDateTimeNew(ParsedJson[0]["Last Pay Increase Date"]) ||
+                    "";
+
+                    if (Number(item.Dbfieldid) === Number(8405))
+                item.Value =
+                  formatCurrency(ParsedJson[0]["Next Pay Increase Amount"]) ||
+                  "";
+
+                if (Number(item.Dbfieldid) === Number(8404))
+                item.Value =
+                formatDateTimeNew(ParsedJson[0]["Next Pay Increase Date"]) ||
+                  "";
+
+
+               if (Number(item.Dbfieldid) === Number(7654))
+                  item.Value = ParsedJson[0]["Average Hours Per Week"] || "";
+
+                  if (Number(item.Dbfieldid) === Number(6733))
+              item.Value = FormatPhone(ParsedJson[0]["Employer Phone Number"]) || "";
+
+              if (Number(item.Dbfieldid) === Number(7248))
+              item.Value = ParsedJson[0]["Printed Employer Name"] || "";
+
+              if (Number(item.Dbfieldid) === Number(8377))
+              item.Value =  formatDateTimeNew(ParsedJson[0]["Date"]) ||
+              "";
+            if (Number(item.Dbfieldid) === Number(4771))
+              item.Value = ParsedJson[0]["Employer Job Title"] || "";
+            
+
+              if (Number(item.Dbfieldid) === Number(8408))
+              item.Value = ParsedJson[0]["Signed"] || "";
+
+
+              if (Number(item.Dbfieldid) === Number(8410))
+              item.Value = ParsedJson[0]["Bonus Continuance"] || "";
+
+
+
+              if (Number(item.Dbfieldid) === Number(8409))
+              item.Value = ParsedJson[0]["Overtime Continuance"] || "";
+
+
+              if (Number(item.Dbfieldid) === Number(7646))
+              item.Value = ParsedJson[0]["Period"] || "";
+
             if (Number(item.Dbfieldid) === Number(7792))
-              item.Value = ParsedJson.Year || "";
+              item.Value = ParsedJson[0].Year || "";
+
+            if (Number(item.Dbfieldid) === Number(2884))
+              item.Value = ParsedJson[0]["Which Borrower"] || "";
+
+            if (Number(item.Dbfieldid) === Number(2891))
+              item.Value = ParsedJson[0]["Employer Name"] || "";
+
+            if (Number(item.Dbfieldid) === Number(7793))
+              item.Value = formatDateTimeNew(ParsedJson[0]["VOE Paid Thru"]) || "";
+
+            if (Number(item.Dbfieldid) === Number(2893))
+              item.Value = formatDateTimeNew(ParsedJson[0]["Employed From"]) || "";
+
+            if (Number(item.Dbfieldid) === Number(2896))
+              item.Value = ParsedJson[0]["Job Title"] || "";
+
+            if (Number(item.Dbfieldid) === Number(6529))
+              item.Value =
+                ParsedJson[0]["Probability of Continued Employment"] || "";
+          });
+
+          setDocDbFields(DocDbFields);
+
+            
+           if (DocTypeValue == 23 && ParsedJson.length > 1){
+            let BindVOEValue = [];
+            for (let index = 1; index < ParsedJson.length; index++) {
+              let iItem = JSON.parse(JSON.stringify(DocDbFields));
+              for (let j = 0; j < iItem.length; j++) {
+              //let BindVOEValue_ = DocDbFields
+              let item =iItem[j]
+
+              if (Number(item.Dbfieldid) === Number(7652))
+              item.Value =
+                formatCurrency(ParsedJson[index]["VOE line 12 B Base Pay."]) || "";
+
+            if (Number(item.Dbfieldid) === Number(7655))
+              item.Value =
+                formatCurrency(ParsedJson[index]["VOE line 12 B. Overtime Income."]) ||
+                "";
+
+            if (Number(item.Dbfieldid) === Number(7656))
+              item.Value =
+                formatCurrency(
+                  ParsedJson[index]["VOE line 12 B. Commission Income."]
+                ) || "";
+
+            if (Number(item.Dbfieldid) === Number(7657))
+              item.Value =
+                formatCurrency(ParsedJson[index]["VOE line 12 B. Bonus Income."]) ||
+                "";
+
+             if (Number(item.Dbfieldid) === Number(8407))
+                item.Value =
+                  formatCurrency(ParsedJson[index]["Last Pay Increase Amount"]) ||
+                  "";
+
+                  if (Number(item.Dbfieldid) === Number(8406))
+                  item.Value =
+                  formatDateTimeNew(ParsedJson[index]["Last Pay Increase Date"]) ||
+                    "";
+
+                    if (Number(item.Dbfieldid) === Number(8405))
+                item.Value =
+                  formatCurrency(ParsedJson[index]["Next Pay Increase Amount"]) ||
+                  "";
+
+                if (Number(item.Dbfieldid) === Number(8404))
+                item.Value =
+                formatDateTimeNew(ParsedJson[index]["Next Pay Increase Date"]) ||
+                  "";
+
+
+               if (Number(item.Dbfieldid) === Number(7654))
+                  item.Value = ParsedJson[index]["Average Hours Per Week"] || "";
+
+                  if (Number(item.Dbfieldid) === Number(6733))
+              item.Value = FormatPhone(ParsedJson[index]["Employer Phone Number"]) || "";
+
+              if (Number(item.Dbfieldid) === Number(7248))
+              item.Value = ParsedJson[index]["Printed Employer Name"] || "";
+
+              if (Number(item.Dbfieldid) === Number(8377))
+              item.Value =  formatDateTimeNew(ParsedJson[index]["Date"]) ||
+              "";
+            if (Number(item.Dbfieldid) === Number(4771))
+              item.Value = ParsedJson[index]["Employer Job Title"] || "";
+            
+
+              if (Number(item.Dbfieldid) === Number(8408))
+              item.Value = ParsedJson[index]["Signed"] || "";
+
+
+              if (Number(item.Dbfieldid) === Number(8410))
+              item.Value = ParsedJson[index]["Bonus Continuance"] || "";
+
+
+
+              if (Number(item.Dbfieldid) === Number(8409))
+              item.Value = ParsedJson[index]["Overtime Continuance"] || "";
+
+
+              if (Number(item.Dbfieldid) === Number(7646))
+              item.Value = ParsedJson[index]["Period"] || "";
+
+
+
+            if (Number(item.Dbfieldid) === Number(2884))
+              item.Value = ParsedJson[index]["Which Borrower"] || "";
+
+            if (Number(item.Dbfieldid) === Number(2891))
+              item.Value = ParsedJson[index]["Employer Name"] || "";
+
+            if (Number(item.Dbfieldid) === Number(7793))
+              item.Value = formatDateTimeNew(ParsedJson[index]["VOE Paid Thru"]) || "";
+
+            if (Number(item.Dbfieldid) === Number(2893))
+              item.Value = formatDateTimeNew(ParsedJson[index]["Employed From"]) || "";
+
+            if (Number(item.Dbfieldid) === Number(2896))
+              item.Value = ParsedJson[index]["Job Title"] || "";
+
+            if (Number(item.Dbfieldid) === Number(6529))
+              item.Value =
+                ParsedJson[index]["Probability of Continued Employment"] || "";
+                }
+            BindVOEValue.push(...iItem)
+
+            }
+            setDocDbFieldsVOE([...BindVOEValue]
+            );
+          }
+
+          setUpdateMappingonlyonNew(false);
+          setOrgDocDbFields(structuredClone(DocDbFields));
+        }
+        } else if (Number(doctypeId) === Number(253)) {
+          console.log(ParsedJson);
+          DocDbFields.forEach((item) => {
+            if (Number(item.Dbfieldid) === Number(2891))
+              item.Value = ParsedJson["Name of Employer"] || "";
+
+            if (Number(item.Dbfieldid) === Number(7649))
+              item.Value =
+                formatCurrency(
+                  ParsedJson[
+                    "W-2. Specific Employer Line 1. Wages, Tips, and Other Compensation. Total Income."
+                  ]
+                ) || "";
 
             if (Number(item.Dbfieldid) === Number(2884))
               item.Value = ParsedJson["Which Borrower"] || "";
 
-            if (Number(item.Dbfieldid) === Number(2891))
-              item.Value = ParsedJson["Employer Name"] || "";
-
-            if (Number(item.Dbfieldid) === Number(7793))
-              item.Value = formatDateTimeNew(ParsedJson["VOE Paid Thru"]) || "";
-
-            if (Number(item.Dbfieldid) === Number(2893))
-              item.Value = formatDateTimeNew(ParsedJson["Employed From"]) || "";
-
-            if (Number(item.Dbfieldid) === Number(2896))
-              item.Value = ParsedJson["Job Title"] || "";
-
-            if (Number(item.Dbfieldid) === Number(6529))
-              item.Value =
-                ParsedJson["Probability of Continued Employment"] || "";
+            if (Number(item.Dbfieldid) === Number(7792))
+              item.Value = ParsedJson.Year || "";
           });
 
           setDocDbFields(DocDbFields);
+
+          // if (DocTypeValue == 23)
+          //   setDocDbFieldsVOE(
+          //     JSON.parse(JSON.stringify([...DocDbFields, ...DocDbFields]))
+          //   );
+
           setUpdateMappingonlyonNew(false);
           setOrgDocDbFields(structuredClone(DocDbFields));
+        } else {
+          DocDbFields.map((item) => {
+            item["Value"] = ParsedJson[item.DisplayName.replace("#", "")];
+            if (Number(item.Dbfieldid) === Number(4652))
+              item.Value = FormatPhone(ParsedJson["Agent Phone"]) || "";
+            return item;
+          });
         }
       }
     }
@@ -1991,9 +2232,8 @@ if(CheckBorrExists.length>0)
               //   OriginalJSON_.account_type = AssetTypeOptionValue;
               // }
             });
-          }
-
-          if (Number(DocTypeValue) === 23) {
+          } else {
+            // if (Number(DocTypeValue) === 23 || Number(DocTypeValue) === 253) {
             console.log("DocDbFields", DocDbFields);
             OriginalJSON_ = DocDbFields.reduce((result, item) => {
               result[item.DisplayName] = item.Value;
@@ -2011,7 +2251,10 @@ if(CheckBorrExists.length>0)
       if (Number(DocTypeValue !== 169))
         setOriginalResponsefromAPI(JSON.stringify(OrginRes));
 
-      return JSON.stringify(OrginRes);
+      return JSON.stringify(OrginRes)
+        .replace("#", "")
+        .replace("?", "")
+        .replace("%", "");
     }
   }
 
@@ -2056,7 +2299,29 @@ if(CheckBorrExists.length>0)
               return result;
             }, {})),
       };
-
+      if (Number(DocTypeValue) === 23) {
+        let arr = [];
+        arr.push(originalData);
+        const middleIndex = Math.floor(DocDbFieldsVOE.length / 2),
+          firstArray = DocDbFieldsVOE.slice(0, middleIndex),
+          secondArray = DocDbFieldsVOE.slice(middleIndex);
+        arr.push({
+          doc_type: docType[0].DocType,
+          ...firstArray.reduce((result, item) => {
+            result[item.DisplayName] = item.Value;
+            return result;
+          }, {}),
+        });
+        arr.push({
+          doc_type: docType[0].DocType,
+          ...secondArray.reduce((result, item) => {
+            result[item.DisplayName] = item.Value;
+            return result;
+          }, {}),
+        });
+        originalData = arr;
+      }
+      debugger;
       console.log("file=====>", file);
       console.log("=====>", JSON.stringify(originalData));
       // return;
@@ -2813,7 +3078,7 @@ if(CheckBorrExists.length>0)
                             Typevalue="TypeOption"
                             TypeText="TypeDesc"
                           ></MultipleSelectCheckmarks>
-                        ) 
+                        ) : (
                           // : fields.DisplayName === "Which Borrower" ? (
                           //   <WhichBorrowerList fields={fields} index={index} />
                           //   // <>
@@ -2822,8 +3087,7 @@ if(CheckBorrExists.length>0)
                           //   //     index,
                           //   //   })}
                           //   // </>
-                          // ) 
-                          : (
+                          // )
                           <DynamicTextBox
                             name={fields.DisplayName}
                             value={fields["Value"] || ""}
@@ -2841,13 +3105,28 @@ if(CheckBorrExists.length>0)
                               //   value = convertToFourDigitYear(value);
                             }}
                             onblur={() => {
+                              
+                              
+                              if (
+                                fields.DisplayName.toString().toLowerCase().indexOf("phone") > -1) {
+
+                                  let formattedValue = FormatPhone(fields["Value"]),
+                                  DocDbFields_ = DocDbFields;
+                                  DocDbFields_[index]["Value"] = formattedValue;
+                                  setDocDbFields([...[], ...DocDbFields_]);
+                                }
+
+
+
                               if (
                                 fields.DisplayName.toString().indexOf(
                                   "Paid Thru"
                                 ) > -1 ||
                                 fields.DisplayName.toString().indexOf(
                                   "Employed From"
-                                ) > -1
+                                ) > -1 ||
+                                fields.DisplayName.toString().indexOf("Date") >
+                                  -1
                               ) {
                                 let DateformattedValue = formatDateTimeNew(
                                     fields["Value"]
@@ -2859,6 +3138,8 @@ if(CheckBorrExists.length>0)
                                 setDocDbFields([...[], ...DocDbFields_]);
                               }
 
+
+                              
                               if (
                                 fields.DisplayName.toString().indexOf(
                                   "Balance"
@@ -2877,6 +3158,9 @@ if(CheckBorrExists.length>0)
                                 ) > -1 ||
                                 fields.DisplayName.toString().indexOf(
                                   "Bonus Income"
+                                ) > -1 ||
+                                fields.DisplayName.toString().indexOf(
+                                  "W-2. Specific Employer Line 1. Wages, Tips, and Other Compensation. Total Income."
                                 ) > -1
                               ) {
                                 let formattedValue = formatCurrency(
@@ -2906,6 +3190,136 @@ if(CheckBorrExists.length>0)
                         )}
                       </>
                     ))}
+
+                  {file &&
+                    Number(DocTypeValue) === 23 &&
+                    DocTypeValue !== 0 &&
+                   DocDbFieldsVOE.map((fields, index) => {
+                        return (
+                          <>
+                            {[0,11,22].includes(index)  && (
+                              <div
+                                style={{
+                                  borderBottom: "2px solid grey",
+                                  height: "0px",
+                                  marginBottom: "20px",
+                                  width: "99%",
+                                }}
+                              >
+                                &nbsp;
+                              </div>
+                            )}
+                            {/* {fields.ElementType === 1 ? (
+                          <MultipleSelectCheckmarks
+                            handleMultiSelect={handleMultiSelect}
+                            value={AssetTypeOptionValue || ""}
+                            label="Type of Account"
+                            Options={AssetTypeOPtions}
+                            Typevalue="TypeOption"
+                            TypeText="TypeDesc"
+                          ></MultipleSelectCheckmarks>
+                        ): ( */}
+                            <DynamicTextBox
+                              name={fields.DisplayName}
+                              value={fields["Value"] || ""}
+                              onChange={(obj) => {
+                                let { name, value } = obj.target,
+                                  DocDbFields_ = DocDbFieldsVOE;
+
+                                DocDbFields_[index]["Value"] = value;
+
+                                setDocDbFieldsVOE([...[], ...DocDbFields_]);
+
+                                // setOrgDocDbFields([...[], ...DocDbFields_]);
+
+                                // if (name === "Beginning Date")
+                                //   value = convertToFourDigitYear(value);
+                              }}
+                              onblur={() => {
+                                    
+                                if (
+                                  fields.DisplayName.toString().toLowerCase().indexOf("phone") > -1) {
+  
+                                    let formattedValue = FormatPhone(fields["Value"]),
+                                    DocDbFields_ = DocDbFields;
+                                    DocDbFields_[index]["Value"] = formattedValue;
+                                    setDocDbFields([...[], ...DocDbFields_]);
+                                  }
+
+                                if (
+                                  fields.DisplayName.toString().indexOf(
+                                    "Paid Thru"
+                                  ) > -1 ||
+                                  fields.DisplayName.toString().indexOf(
+                                    "Employed From"
+                                  ) > -1 ||
+                                  fields.DisplayName.toString().indexOf(
+                                    "Date"
+                                  ) > -1
+                                ) {
+                                  let DateformattedValue = formatDateTimeNew(
+                                      fields["Value"]
+                                    ),
+                                    DocDbFields_ = DocDbFieldsVOE;
+                                  DocDbFields_[index]["Value"] =
+                                    DateformattedValue;
+
+                                  setDocDbFieldsVOE([...[], ...DocDbFields_]);
+                                }
+
+                                if (
+                                  fields.DisplayName.toString().indexOf(
+                                    "Balance"
+                                  ) > -1 ||
+                                  fields.DisplayName.toString().indexOf(
+                                    "Amount"
+                                  ) > -1 ||
+                                  fields.DisplayName.toString().indexOf(
+                                    "Base Pay"
+                                  ) > -1 ||
+                                  fields.DisplayName.toString().indexOf(
+                                    "Overtime Income"
+                                  ) > -1 ||
+                                  fields.DisplayName.toString().indexOf(
+                                    "Commission Income."
+                                  ) > -1 ||
+                                  fields.DisplayName.toString().indexOf(
+                                    "Bonus Income"
+                                  ) > -1 ||
+                                  fields.DisplayName.toString().indexOf(
+                                    "W-2. Specific Employer Line 1. Wages, Tips, and Other Compensation. Total Income."
+                                  ) > -1
+                                ) {
+                                  let formattedValue = formatCurrency(
+                                      fields["Value"],
+                                      2
+                                    ),
+                                    DocDbFields_ = DocDbFieldsVOE;
+                                  DocDbFields_[index]["Value"] = formattedValue;
+
+                                  setDocDbFieldsVOE([...[], ...DocDbFields_]);
+
+                                  // setOrgDocDbFields([...[], ...DocDbFields_]);
+                                }
+                                setEnableSave(true);
+                              }}
+                              label={fields.DisplayName}
+                              onMouseHover={(e, value) => {
+                                handleFindFormToElements(e, true, value);
+                                // extractText();
+                              }}
+                              onMouseLeave={handleRemoveLine}
+                              setChangeLogModalOpen={setChangeLogModalOpen}
+                              LoanId={LoanId}
+                              DbFieldId={fields.Dbfieldid}
+                              ScanDocId={scandocId}
+                              setChangeLogData={setChangeLogData}
+                            />
+                            {/* )} */}
+                          </>
+                        );
+                     
+                    })}
                   {Object.keys(ResJSON).length > 0 || file ? (
                     <div className="pagebottom">
                       <span className="footertext">Column Bottom</span>
@@ -3004,7 +3418,7 @@ if(CheckBorrExists.length>0)
                     title: "Scanned Images",
                     click: (e) => {
                       openNewWindow(
-                        `https://www.directcorp.com/BorrowerApplication/Presentation/Webforms/ScanLoanDocs_DataPipeline.aspx?SessionID=${SessionId}&LoanId=${LoanId}&CustId=${userId}`,
+                        `https://www.directmortgage.com/BorrowerApplication/Presentation/Webforms/ScanLoanDocs_DataPipeline.aspx?SessionID=${SessionId}&LoanId=${LoanId}&CustId=${BorrowerList[0].CustId}`,
                         1
                       );
                     },
