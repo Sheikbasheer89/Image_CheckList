@@ -3197,7 +3197,7 @@ function Form() {
                    DocDbFieldsVOE.map((fields, index) => {
                         return (
                           <>
-                            {[0,11,22].includes(index)  && (
+                            {[0,24,48].includes(index)  && (
                               <div
                                 style={{
                                   borderBottom: "2px solid grey",
