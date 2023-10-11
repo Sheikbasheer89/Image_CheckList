@@ -2267,9 +2267,10 @@ function Form() {
       originalData = {},
       file_ = file,
       fileName = "";
-
+    
+    let validateJSON = fnCheckFeedbackJSON(Details["DocType"] || DocTypeValue, DocDbFields__);
     if (
-      fnCheckFeedbackJSON(Details["DocType"] || DocTypeValue, DocDbFields__) ||
+      validateJSON ||
       FeedBackCollection
     ) {
       var myHeaders = new Headers();
@@ -2277,7 +2278,7 @@ function Form() {
       myHeaders.append("Content-Type", "application/json");
 
       let FirstTimeLog = 0;
-      if (FeedBackCollection) FirstTimeLog = 1;
+      if (FeedBackCollection && validateJSON === false) FirstTimeLog = 1;
       setFeedBackCollection(false);
       let UploadedMonthlyIncome = uploadedDocument.filter(
         (item) => item.ScanDocId == scandocId
