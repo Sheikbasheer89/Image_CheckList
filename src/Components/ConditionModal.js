@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import CircleIcon from "@mui/icons-material/Circle";
 
 function ConditionalModal(props) {
-  //   debugger;
+  //   //debugger;
   let { setConditionalModalOpen, conditionalModalOpen, conditionDetails } =
     props;
 

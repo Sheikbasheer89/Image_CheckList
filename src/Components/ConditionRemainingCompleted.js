@@ -22,7 +22,7 @@ export default function ConditionalRemainingCompleteModel(props) {
     conditionDetails,
   } = props;
   //console.log(uploadedDocDetails.PassedValidation);
-  debugger;
+  //debugger;
 
   const LongDesc = conditionDetails.LongDesc?.toString().replace(
     /&amp;apos;/g,

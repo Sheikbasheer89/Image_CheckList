@@ -54,7 +54,7 @@ const AgGrid = (props) => {
       },
     })
       .then((response) => {
-        debugger;
+        //debugger;
         // console.clear();
         //    console.log(response);
         setFeedBackDetails(
@@ -84,7 +84,7 @@ const AgGrid = (props) => {
         setRowData(FeedBackRowData);
       })
       .catch((error) => {
-        //debugger;
+        ////debugger;
         console.log("error", error);
       });
   }, []);
@@ -101,7 +101,7 @@ const AgGrid = (props) => {
           href="#"
           style={{ cursor: "pointer" }}
           onClick={() => {
-            debugger;
+            //debugger;
             //  console.log(params);
 
             const element = document.createElement("a");
@@ -131,7 +131,7 @@ const AgGrid = (props) => {
           href="#"
           style={{ cursor: "pointer" }}
           onClick={() => {
-            debugger;
+            //debugger;
             //  console.log(params);
 
             // const element = document.createElement("a");
@@ -155,7 +155,7 @@ const AgGrid = (props) => {
   }
 
   function fnSendFeedbacktoAPI(originalData, scandocId, FId, IsIgnore) {
-    debugger;
+    //debugger;
     // return;
     if (scandocId === 0) return;
     let Ignore = "true";
@@ -218,7 +218,7 @@ const AgGrid = (props) => {
               : "btn btn-primary"
           }
           onClick={() => {
-            debugger;
+            //debugger;
             document.querySelector(
               "#spnProgress_" + params.data.Id
             ).style.display = "inline-block;";

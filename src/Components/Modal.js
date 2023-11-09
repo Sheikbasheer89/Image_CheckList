@@ -138,7 +138,7 @@ function Modal(props) {
                   SelectedVal={WhichEnity}
                   fromBorrEntityExists="2"
                   onChange={(e) => {
-                    debugger;
+                    //debugger;
                     let { name, value } = e.target;
                     fnBorrEntityValueChange({
                       name: name,
@@ -172,7 +172,7 @@ function Modal(props) {
             <button
               className="btn btn-primary"
               onClick={() => {
-                debugger;
+                //debugger;
                 console.log(BorrLists);
                 console.log(WhichBorrower);
                 if (Number(DocTypeValue) !== 169) {

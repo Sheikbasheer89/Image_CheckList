@@ -15,6 +15,7 @@ import { handleAPI } from "./CommonFunction";
 import { useDropzone } from "react-dropzone";
 import DoneIcon from "@mui/icons-material/Done";
 import { json } from "react-router-dom";
+import DocTypeAhead from "./ASyncTypeAhead";
 
 function DropZone(props) {
   const {
@@ -48,7 +49,16 @@ function DropZone(props) {
     setMultipleProgressbar,
     MultipleProgressbar = [],
     fnUpdateDocdeatails,
+    TypeAheadDetails = "",
   } = props;
+
+  const {
+    options,
+    onChange,
+    selectedOption,
+    placeholder,
+    label: ilabel,
+  } = TypeAheadDetails;
   // console.log("Props", props);
   const [ExtractProgres, setExtractProgres] = useState(false);
   const { contextDetails, setContextDetails } = useContext(Context);
@@ -88,7 +98,7 @@ function DropZone(props) {
     let file;
     let fileInfo;
     let selectedFiles = event.target.files;
-    debugger;
+    //debugger;
     // setExtractProgres(true);
     if (document.querySelector("#spnConfidenceScore") !== null)
       document.querySelector("#spnConfidenceScore").innerHTML = "";
@@ -111,9 +121,14 @@ function DropZone(props) {
       // console.log(reader.result);
       if (i === 0) handleSetFile(file);
       setFeedBackCollection(true);
-      var formdata = new FormData();
-
+      var formdata = null;
+      let IshugeFile = 0;
+      const fileSizeInBytes = file.size;
+      const fileSizeInMB = fileSizeInBytes / (1024 * 1024);
+      formdata = new FormData();
       formdata.append("", fileInfo);
+
+      if (fileSizeInMB > 10) IshugeFile = 1;
 
       let params = {
         LoanId: LoanId,
@@ -125,6 +140,7 @@ function DropZone(props) {
         entityid: props.EntityId || 0,
         entitytypeid: props.EntityTypeId || 0,
         conditonid: props.ID,
+        IsHugeFile: IshugeFile,
       };
 
       var requestOptions = {
@@ -143,7 +159,7 @@ function DropZone(props) {
         requestOptions
       )
         .then((response) => response.json())
-        .then((result) => {
+        .then(async (result) => {
           // console.log(result);
 
           selectedFiles[i].JobId = result.split("~")[0];
@@ -152,7 +168,10 @@ function DropZone(props) {
           console.log(selectedFiles);
 
           if (Array.from(selectedFiles).length - 1 === i) {
-            fnCheckJsonResponseLoop();
+            // if(IshugeFile == 1)
+            //   await new Promise((resolve) => setTimeout(resolve, 600000));
+            setSelectedFile(selectedFiles);
+            await fnCheckJsonResponseLoop(selectedFiles);
           }
         })
         .catch((error) => console.log("error", error));
@@ -165,107 +184,106 @@ function DropZone(props) {
       event.target.value = null;
     }
 
-    function fnCheckJsonResponseLoop(iselectedFiles) {
-      let selectedFiles_ = iselectedFiles || selectedFiles;
-      debugger;
+    async function fnCheckJsonResponseLoop(iselectedFiles) {
+      let selectedFiles_ = iselectedFiles || SelectedFile;
+      //debugger;
       let Counter = 0,
-        FileCount = Array.from(selectedFiles_).length;
-
-      // setSelectedFile(selectedFiles_);
+        FileCount = Array.from(selectedFiles_).length;      
 
       // setTimeout(() => {
-      Array.from(selectedFiles_).forEach(
-        async (file, j, CopyselectedFiles_) => {
-          if (file && file.JobId !== undefined && file.isComplete === false) {
-            await handleAPI({
-              name: "fnMetaAPIStatusCheckPollingWithOutWait",
-              params: {
-                LoanId: Number(LoanId),
-                JobId: file.JobId,
-              },
-            })
-              .then((result) => {
-                // console.log(response);
-                if (
-                  result.split("~")[0] === "" ||
-                  result.split("~")[0] === undefined ||
-                  result.split("~")[0] === "Submitted"
-                ) {
-                  // setTimeout(() => {
-                  //   fnCheckJsonResponseLoop(Array.from(SelectedFile));
-                  // }, 500);
-                  return;
-                }
-                // let selectedFiles_ = selectedFiles,
-                let fileType =
-                  JSON.parse(result.split("~")[0]).doc_type || "Miscellaneous";
 
-                file.isComplete = true;
-                file.docMovedMessage = `This document is recognized as ${fileType} and was moved to ${fileType} section.`;
-                file.docType = JSON.parse(result.split("~")[0])["doc_type"];
-                file.docTypeId = props.DocTypeId;
-                file.ScandocId = result.split("~")[1];
-                file.confidence_score =
-                  JSON.parse(result.split("~")[0]).doc_type_confidence_score ||
-                  "";
+      for (let j = 0; j < FileCount; j++) {
+        const file = Array.from(selectedFiles_ || SelectedFile)[j];
+        // Array.from(selectedFiles_).forEach(
+        // async (file) => {
+        if (file && file.JobId !== undefined && file.isComplete === false) {
+          const result = await handleAPIHuge({
+            name: "fnMetaAPIStatusCheckPollingWithOutWait",
+            params: {
+              LoanId: Number(LoanId),
+              JobId: file.JobId,
+            },
+          });
+          // .then((result) => {
+          // console.log(response);
 
-                let IsSaved = 1;
-                if (result.split("~")[2] !== undefined)
-                  IsSaved = result.split("~")[2];
-                file.IsSaved = IsSaved;
-
-                file.ParsedJson = "";
-
-                console.log(MultipleProgressbar);
-                // Counter++;
-                // CopyselectedFiles_.push(file);
-                // if(Counter === FileCount)
-                console.log("CopyselectedFiles_", CopyselectedFiles_);
-                setMultipleProgressbar([...[], ...CopyselectedFiles_]);
-                // let iMultipleProgressbar = MultipleProgressbar
-                // iMultipleProgressbar= iMultipleProgressbar.map((item_) => {
-
-                //   item_.isComplete = item_.name == file.name
-                //   return item_
-
-                // })
-
-                let getScandocId = result.split("~")[1];
-                if (
-                  getScandocId === undefined ||
-                  // result?.toString().indexOf("business_logic_json") === -1
-                  result?.toString().indexOf("extraction_json") === -1 ||
-                  JSON.parse(result.split("~")[0]).extraction_json === null
-                ) {
-                  // setExtractProgres(false);
-                  setFieldExtractProgres(false);
-                  setExtractResult(result);
-                  setOriginalResJSON("");
-                  setScandocId(getScandocId);
-                  // fnPdfclassification(file, getScandocId, requestOptions);
-                  setWhichProcessMsg(0);
-                  fnGetLeaderLineSetup({});
-                  setOriginalResJSON(result.split("~")[0]);
-                } else {
-                  setExtractResult("");
-                  setScandocId(getScandocId);
-                  result = result.split("~")[0];
-                  // let ParsedJson = JSON.parse(result)["business_logic_json"];
-                  let ParsedJson = JSON.parse(result)["extraction_json"];
-                  console.log(ParsedJson);
-                  fnGetLeaderLineSetup(ParsedJson);
-                  setOriginalResJSON(result);
-                  file.ParsedJson = ParsedJson;
-                  setFieldExtractProgres(false);
-                }
-              })
-              .catch((error) => {
-                //debugger;
-                console.log("error", error);
-              });
+          if (
+            result.split("~")[0] === "" ||
+            result.split("~")[0] === undefined ||
+            result.split("~")[0] === "Submitted"
+          ) {
+            j--;
+            continue;
           }
+          // let selectedFiles_ = selectedFiles,
+          let fileType =
+            JSON.parse(result.split("~")[0]).doc_type || "Miscellaneous";
+
+          file.isComplete = true;
+          file.docMovedMessage = `This document is recognized as ${fileType} and was moved to ${fileType} section.`;
+          file.docType = JSON.parse(result.split("~")[0])["doc_type"];
+          file.docTypeId = props.DocTypeId;
+          file.ScandocId = result.split("~")[1];
+          file.confidence_score =
+            JSON.parse(result.split("~")[0]).doc_type_confidence_score || "";
+
+          let IsSaved = 1;
+          if (result.split("~")[2] !== undefined)
+            IsSaved = result.split("~")[2];
+          file.IsSaved = IsSaved;
+
+          file.ParsedJson = "";
+
+          console.log(MultipleProgressbar);
+          // Counter++;
+          // CopyselectedFiles_.push(file);
+          // if(Counter === FileCount)
+          console.log("CopyselectedFiles_", Array.from(selectedFiles_ || SelectedFile));
+          setMultipleProgressbar([...[], ...Array.from(selectedFiles_ || SelectedFile)]);
+          // let iMultipleProgressbar = MultipleProgressbar
+          // iMultipleProgressbar= iMultipleProgressbar.map((item_) => {
+
+          //   item_.isComplete = item_.name == file.name
+          //   return item_
+
+          // })
+
+          let getScandocId = result.split("~")[1];
+          if (
+            getScandocId === undefined ||
+            // result?.toString().indexOf("business_logic_json") === -1
+            result?.toString().indexOf("extraction_json") === -1 ||
+            JSON.parse(result.split("~")[0]).extraction_json === null
+          ) {
+            // setExtractProgres(false);
+            setFieldExtractProgres(false);
+            setExtractResult(result);
+            setOriginalResJSON("");
+            setScandocId(getScandocId);
+            // fnPdfclassification(file, getScandocId, requestOptions);
+            setWhichProcessMsg(0);
+            fnGetLeaderLineSetup({});
+            setOriginalResJSON(result.split("~")[0]);
+          } else {
+            setExtractResult("");
+            setScandocId(getScandocId);
+            let iresult = result.split("~")[0];
+            // let ParsedJson = JSON.parse(result)["business_logic_json"];
+            let ParsedJson = JSON.parse(iresult)["extraction_json"];
+            console.log(ParsedJson);
+            fnGetLeaderLineSetup(ParsedJson);
+            setOriginalResJSON(iresult);
+            file.ParsedJson = ParsedJson;
+            setFieldExtractProgres(false);
+          }
+          // })
+          // .catch((error) => {
+          //   ////debugger;
+          //   console.log("error", error);
+          // });
         }
-      );
+      }
+      // );
       // }, 2000);
       // setMultipleProgressbar([...[], ...Array.from(selectedFiles_)]);
 
@@ -289,6 +307,72 @@ function DropZone(props) {
       // }
     }
   };
+
+
+  const handleAPIHuge = async ({ name, params, method }) => {
+    params = Object.keys(params)
+      .map((key) => `${key}=${params[key]}`)
+      .join("&");
+    let URL = `https://www.solutioncenter.biz/LoginCredentialsAPI/api/${name}?${params}`;
+  
+    try {
+      // Make a fetch request with a readable stream response
+      const response = await fetch(URL, {
+        method: method || "POST",
+        crossDomain: true,
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+      });
+  
+      if (!response.body) {
+        console.log("Streaming not supported by this browser.");
+        return;
+      }
+  
+      // Initialize a response reader
+      const reader = response.body.getReader();
+  
+      // Process the response in chunks
+      const dataChunks = [];
+      let totalBytes = 0;
+  
+      while (true) {
+        const { done, value } = await reader.read();
+  
+        if (done) {
+          break;
+        }
+  
+        dataChunks.push(value);
+        totalBytes += value.byteLength;
+  
+        // Adjust this limit as needed
+        if (totalBytes >= 200 * 1024 * 1024) {
+          // Handle the response or stop further processing
+          console.log("Response exceeds 200 MB");
+          break;
+        }
+      }
+  
+      // Combine the data chunks into a single buffer or string
+      const combinedData = new Uint8Array(totalBytes);
+      let offset = 0;
+      for (const chunk of dataChunks) {
+        combinedData.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+  
+      // Convert the response to the desired format, e.g., JSON
+      const responseData = JSON.parse(new TextDecoder("utf-8").decode(combinedData));
+  
+      return responseData;
+    } catch (error) {
+      console.log(`Error: ${error}`);
+    }
+  };
+  
 
   function fnPdfclassification(file, iScandocId, irequestOptions) {
     let params = {
@@ -318,7 +402,7 @@ function DropZone(props) {
         );
       })
       .catch((error) => {
-        //debugger;
+        ////debugger;
         console.log("error", error);
       });
   }
@@ -360,7 +444,7 @@ function DropZone(props) {
         }}
         onClick={(event) => {
           // return;
-          // debugger;
+          // //debugger;
           if (
             event.target.classList.toString().indexOf("btnCondRemaning") !== -1
           ) {
@@ -581,17 +665,16 @@ function DropZone(props) {
         {MultipleProgressbar.length > 0 && (
           <div>
             {MultipleProgressbar.map((file, index) => {
-              // debugger;
+              // //debugger;
 
               if (file["isComplete"] && !file["isClicked"]) {
                 setTimeout(() => {
-              
-                    let aEle = document.querySelector("#fileLink_" + index);
-                    aEle.click();
-                    // aEle.removeAttribute("id");
-                    let iMultipleProgressbar=MultipleProgressbar
-                    iMultipleProgressbar[index]['isClicked']=true
-                    setMultipleProgressbar([...iMultipleProgressbar])
+                  let aEle = document.querySelector("#fileLink_" + index);
+                  aEle.click();
+                  // aEle.removeAttribute("id");
+                  let iMultipleProgressbar = MultipleProgressbar;
+                  iMultipleProgressbar[index]["isClicked"] = true;
+                  setMultipleProgressbar([...iMultipleProgressbar]);
                 }, 500);
               }
               return (
@@ -654,7 +737,7 @@ function DropZone(props) {
                                 // console.log(response);
                               })
                               .catch((error) => {
-                                //debugger;
+                                ////debugger;
                                 console.log("error", error);
                               });
                           }}
