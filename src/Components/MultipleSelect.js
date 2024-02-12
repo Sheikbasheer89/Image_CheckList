@@ -32,7 +32,7 @@ const names = [
 ];
 
 export default function MultipleSelectCheckmarks(props) {
-  let { handleMultiSelect, value, label, Options, Typevalue, TypeText } = props;
+  let { handleMultiSelect, value, label, Options, Typevalue, TypeText,  onMouseHover = () => {}, } = props;
 
   const handleChange = (event) => {
     const {
@@ -55,6 +55,9 @@ export default function MultipleSelectCheckmarks(props) {
           input={<OutlinedInput label={label} />}
           renderValue={(selected) => (selected || []).join(", ")}
           MenuProps={MenuProps}
+          onMouseEnter={(e) => {
+            onMouseHover(e, value);
+          }}
         >
           {Options.map((item, index) => (
             <MenuItem key={index} value={item[TypeText]}>

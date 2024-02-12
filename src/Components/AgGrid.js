@@ -250,13 +250,14 @@ const AgGrid = (props) => {
     );
   }
   const columnDefs = [
-    { field: "Request Sent", autoSize: true, maxWidth: 150 },
-    { field: "Response Received", autoSize: true, maxWidth: 150 },
+    { field: "Request Sent", autoSize: true, maxWidth: 150, sortable:true },
+    { field: "Response Received", autoSize: true, maxWidth: 150, sortable:true },
     {
       field: "Requested Json",
       cellRenderer: MyRenderer,
       autoSize: true,
       maxWidth: 150,
+      sortable:true,
     },
     {
       field: "Response Json",
@@ -264,8 +265,9 @@ const AgGrid = (props) => {
       cellClassRules: {
         "wrap-text": () => true, // Apply wrap-text class to all cells in this column
       },
+      sortable:true,
     },
-    { field: "Requested By", autoSize: true, maxWidth: 150 },
+    { field: "Requested By", autoSize: true, maxWidth: 150, sortable:true },
     {
       field: "Ignore",
       cellRenderer: MyRendererIgnore,
@@ -277,11 +279,13 @@ const AgGrid = (props) => {
       cellRenderer: MyRendererChanges,
       autoSize: true,
       maxWidth: 150,
+      sortable:true,
     },
   ];
   const gridOptions = {
     domLayout: "autoHeight",
     suppressRowTransform: true,
+    sortable: true,
   };
 
   return (

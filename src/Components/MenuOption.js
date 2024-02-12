@@ -11,6 +11,7 @@ function MenuOptions(props) {
     >
       {Options.map((item, index) => (
         <Dropdown.Item
+        key={index}
           onClick={() => {
             item.click();
           }}

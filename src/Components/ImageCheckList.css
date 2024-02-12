@@ -180,15 +180,16 @@ fieldset[disabled] .btn-primary.active {
 .drop-container {
   align-items: center;
   border: 2px dashed black !important;
-  border-radius: 10px;
+  border-radius: 8px;
   color: #444;
   cursor: pointer;
   display: inline-flex;
   flex-direction: column;
   gap: 10px;
-  height: 50px;
+  /* height: 25px; */
+  overflow: hidden;
   justify-content: center;
-  padding: 20px;
+  padding: 0;
   position: relative;
   transition: background 0.2s ease-in-out, border 0.2s ease-in-out;
   width: 40%;
@@ -201,9 +202,9 @@ fieldset[disabled] .btn-primary.active {
   width: 40%;
   position: absolute;
   z-index: 9999;
-  top: 20px;
+  top: 5px;
   text-align: center;
-  display: inline-block;
+  display: block !important;
 }
 .drop-content {
   margin: 0 0 0 10px;
@@ -223,6 +224,7 @@ input[type="file"] {
   height: 50px;
   /* background: none; */
   z-index: 1;
+  border:none !important
 }
 .drop-after {
   content: "Click to Upload";
@@ -485,6 +487,7 @@ span.MuiCheckbox-colorPrimary {
   height: 30px;
   color: rgb(255, 255, 255);
   font-family: Arial, Helvetica, sans-serif;
+  margin-top: 5px;
 }
 
 .btnLoanApp,
@@ -531,4 +534,172 @@ span.MuiCheckbox-colorPrimary {
   -webkit-box-shadow: 0 6px 12px rgba(0, 0, 0, 0.175);
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.175);
   background-clip: padding-box;
+}
+
+ .table{
+  margin: 5px;
+}
+
+.table .iheader{
+  background-color: #c7def1;
+}
+
+.table .iheader:first-child{
+  border-left: 1px solid !important;
+  padding: 3px;
+}
+.table .ifooter, #TotalspnMonthlyIncomeMain b{
+  background-color: #bddba7;
+}
+.table * { font-size: 11px; }
+.table {
+  margin: 10px 5px !important;
+  border-top: 1px solid !important;
+  
+
+}
+.table div {
+  border: 1px solid;
+  display: flex;
+  border-left: none ;
+  border-top: none ;
+}
+.table span{
+  border-left: 1px solid;
+  width: 33.33%;
+  padding: 5px;
+}
+ .table .body span:nth-child(2){
+  color:blue;
+  cursor: pointer;
+ }
+ /* .table .body span:nth-child(2):hover{
+  text-decoration: underline;
+ } */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.divMaindropZone,.divMaindropZone span,.divMaindropZone div {
+  border :none 
+}
+
+.rbt {
+  border: 1px solid lightblue !important;
+  border-radius: 5px !important;
+}
+
+.body .divMaindropZone {
+
+
+  border: none !important;
+  display: block;
+} 
+.toolTipTable *{font-size:10px;background-color: #fff;}
+.toolTipTable td, .toolTipTable th {
+  border: 1px solid #ddd;
+  padding: 3px;
+color:#000
+}
+
+.toolTipTable tr:nth-child(even){background-color: #f2f2f2;}
+
+.toolTipTable tr:hover {background-color: #ddd;}
+
+.toolTipTable th {
+  padding: 3px;
+  
+  text-align: left;
+  background-color: #428bca;;
+  color: white;
+}
+.MuiTooltip-tooltip{
+
+  background-color: transparent !important;
+  min-width: 420px !important;
+  margin-left: 0px !important;
+}
+.toolTipTable table {
+
+  border-radius:  5px;
+ 
+}
+
+.MuiTooltip-popper{
+
+height: 80%;
+overflow: auto;
+
+}
+
+.rbt-token .rbt-token-remove-button {
+  font-size: 15px !important;  
+}
+.mt-3{
+
+  margin-top: 0rem !important;
+}
+.innerTable{
+  border: 1px solid #999;
+  width:100%;
+}
+.innerTable tr{
+  border-bottom: 1px solid #999;
+  padding: 3px 10px ;
+  display: block;
+  color: #428bca;
+  overflow-wrap: anywhere;
+  /* line-height: 0.1rem; */
+}
+.innerTable tr:nth-child(even) {
+  background-color: #CCCCCC;  
+}
+.innerTable tr:nth-child(odd) {
+  background-color: #FFFFFF;  
+}
+.innerTable tr:hover{
+text-decoration: underline;
+color: #428bca !important;
+}
+.innerTable p {
+  margin: 0 !important;
+}
+.react-datepicker__tab-loop{
+  position:fixed;
+}
+.react-datepicker{
+  font-size: 10px;
+}
+.react-datepicker__month-container{
+  font-size: larger;
+}
+.react-tabs__tab--selected {
+  border: 2px solid #0082ff !important;
+  border-bottom: none !important;
+}
+.react-tabs__tab{
+/* border-radius: 5; */
+border: 1px solid #999;
+border-bottom: none;
+border-top-right-radius: 5px !important;
+border-top-left-radius: 5px !important;
+/* margin-right: 5px; */
+}
+
+/* styles.css */
+.tableWithBorder {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.tableWithBorder th, .tableWithBorder td {
+  border: 1px solid #ddd;
+  padding: 4px;
+  text-align: left;
+  font-size: 11px;
+}
+
+.tableWithBorder th {
+  background-color: #bddba7;
 }

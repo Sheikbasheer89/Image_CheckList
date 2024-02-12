@@ -50,22 +50,51 @@ export default function CustomInputAutocomplete(props) {
       SelectSytle = {},
       isIncludeSelect = true,
       onBlur = () => {},
+      GetAPIChangeLog,
+      LoanId,
+      DbFieldId,
+      ScanDocId,
+      onMouseHover = () => {},
+      onMouseLeave = () => {},
+      setBorrowerList,
+      onFocus= () => {}
     } = props,
     [iValue, setIValue] = React.useState(SelectedVal),
+    [newValue, setNewValue] = React.useState(SelectedVal),
     inputRef = React.useRef();
   // React.useEffect(() => {
   //   let arr = options.filter((item) => item[value] == SelectedVal);
   //   if (arr.length > 0) inputRef.current.value=(arr[0][text]);
   // }, [SelectedVal]);
+  React.useEffect(() => {
+    if (name == "Which Borrower") setIValue(SelectedVal?.trim());
+  }, [SelectedVal]);
+
+  function removeSelection(input) {
+    // Check if the input has a selection
+    if(input){
+    if (input.setSelectionRange) {
+        // For modern browsers
+        input.setSelectionRange(0, 0);
+    } else if (input.createTextRange) {
+        // For Internet Explorer
+        var range = input.createTextRange();
+        range.collapse(true);
+        range.moveEnd('character', 0);
+        range.moveStart('character', 0);
+        range.select();
+    }
+  }
+}
 
   return (
     <div>
       <div
         className="form-group divInputWrapper"
-        // onMouseEnter={(e) => {
-        //   onMouseHover(e, ResJSON[name]);
-        // }}
-        // onMouseLeave={onMouseLeave}
+        onMouseEnter={(e) => {
+          onMouseHover(e, iValue);
+        }}
+        onMouseLeave={onMouseLeave}
       >
         <label>{label}</label>
         <Autocomplete
@@ -79,41 +108,76 @@ export default function CustomInputAutocomplete(props) {
           }}
           // id="custom-input-demo"
           onChange={onChange}
-          options={options.map((item) => item["Name"])}
+          options={options.map((item) => item["Name"]?.trim())}
           renderInput={(params) => {
-            return <div ref={params.InputProps.ref}>
-              <span
-                style={{
-                  position: "absolute",
-                  fontSize: "10px",
-                  top: "20px",
-                  left: "25px",
-                }}
-              >
-                {iValue}
-              </span>
+            return (
+              <div ref={params.InputProps.ref}>
+                <span
+                  style={{
+                    position: "absolute",
+                    fontSize: "10px",
+                    top: "20px",
+                    left: "23px",
+                    // color: "#808080"
+                  }}
+                >
+                  {iValue}
+                </span>
 
-              <input
-                type="text"
-                {...params.inputProps}
-                className="form-control"
-              />
-            </div>
-          }
-           
-          }
+                <input
+                  // style={{
+                  //   color: "#808080"
+                  // }}
+                  {...params.inputProps}
+                  value={iValue}
+                  type="text"
+                  onInput={(e) => {
+                    let Name = e.currentTarget.textContent || e.target.value;
+
+                    setNewValue(Name);
+                    setIValue(null)
+                  }}
+                  // onFocus={(e)=> {
+                  //   debugger;
+                  //   setTimeout(() => {
+                  //     removeSelection(e.target);
+                  //   }, 300); 
+                    
+                  // }
+                  // }
+                  onBlur={(e) => {
+                    let isExist = options.filter(
+                        (item) => item["Name"]?.trim() == newValue?.trim()
+                      ),
+                      iOptions = options.filter((item) => item.CustId != -99);
+                    if (isExist.length == 0) {
+                      iOptions.push({ CustId: -99, Name: newValue });
+                      setBorrowerList(iOptions);
+                      e.target.value = "";
+                      setIValue(newValue);
+                      onChange(null,newValue,iOptions);
+                    }
+                  }}
+                  className="form-control"
+                />
+              </div>
+            );
+          }}
         />
 
-        <span onClick={() => {}} style={{ cursor: "pointer", zIndex: 111 }}>
+        <span
+          onClick={() => {
+            GetAPIChangeLog(LoanId, DbFieldId, ScanDocId);
+          }}
+          style={{ cursor: "pointer", zIndex: 111 }}
+        >
           <FeedTwoToneIcon
             style={{
               verticalAlign: "bottom",
               color: "#999",
               cursor: "pointer",
             }}
-            onClick={() => {
-              // GetAPIChangeLog(LoanId, DbFieldId, ScanDocId);
-            }}
+            onClick={() => {}}
           ></FeedTwoToneIcon>
         </span>
       </div>

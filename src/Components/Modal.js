@@ -175,7 +175,7 @@ function Modal(props) {
                 //debugger;
                 console.log(BorrLists);
                 console.log(WhichBorrower);
-                if (Number(DocTypeValue) !== 169) {
+                if (Number(DocTypeValue) !== 169 && Number(DocTypeValue) !== 253) {
                   let DocDbFields__ = DocDbFields;
                   if (
                     Number(WhichBorrower) !== -1 &&

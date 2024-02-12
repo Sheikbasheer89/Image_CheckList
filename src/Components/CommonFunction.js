@@ -1,5 +1,6 @@
 import FeedTwoToneIcon from "@mui/icons-material/FeedTwoTone";
 import { createContext, useState } from "react";
+import Statistics from "./Statistics";
 
 const handleAPI = async ({ name, params, method }) => {
   params = Object.keys(params)
@@ -108,6 +109,30 @@ const TextBox = (props) => {
             }}
           ></FeedTwoToneIcon>
         </span>
+      </div>
+    </>
+  );
+};
+
+const TextBoxDatePicker = (props) => {
+  const {
+    label,
+    onChange,    
+    name,
+    value,
+    
+  } = props;
+  console.log("iProps", props);
+  return (
+    <>
+      <div
+        className="form-group divInputWrapper"
+        
+      >
+        <label>{label}</label>
+        <Statistics onChange={onChange} />
+        
+       
       </div>
     </>
   );
@@ -255,8 +280,8 @@ const DynamicTextBox = (props) => {
 };
 
 const openNewWindow = (URL, flag) => {
-  // if (!window.location.href.indexOf("localhost") === -1)
-
+  // if (!window.location.hrrefef.indexOf("localhost") === -1)
+  
   if (flag !== 1) URL = `/imagechecklistreact${URL}`;
   window.open(
     URL,
@@ -304,4 +329,5 @@ export {
   openNewWindow,
   fnSaveWindowPosition,
   DynamicTextBox,
+  TextBoxDatePicker,
 };
