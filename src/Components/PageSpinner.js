@@ -10,7 +10,7 @@ const override = css`
 
 const PageSpinner = () => {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+    <div style={{ display: 'flex',overflow: 'hidden',  flexDirection: 'column', alignItems: 'center' }}>
       {/* Your form content */}
       <form>
         {/* Form fields go here */}

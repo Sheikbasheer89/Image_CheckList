@@ -458,8 +458,8 @@ function DropZone(props) {
 
   useEffect(() => {
     if (
-      props.ID === activeDropzone.Id &&
-      props.DocTypeId === activeDropzone.DocTypeId &&
+      Number(props.ID) === Number(activeDropzone.Id) &&
+      Number(props.DocTypeId) === Number(activeDropzone.DocTypeId) &&
       activeDropzone.PreventScroll
     ) {
       setActiveDropzone({ ...activeDropzone, PreventScroll: false });

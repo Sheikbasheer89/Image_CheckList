@@ -32,6 +32,7 @@ export default function CustomizedSnackbars(props) {
           severity="success"
           sx={{ width: "100%", fontSize: "13px" }}
         >
+          {props.message ? <>{props.message}</> :<>
           {Number(props.WhichProcessMsg) === -99
             ? props.RespMsg
             : Number(props.WhichProcessMsg) === 1
@@ -40,6 +41,7 @@ export default function CustomizedSnackbars(props) {
                 props.DocCheck
               } and was moved to${" "}
           ${props.DocCheck} section.`}
+          </> }
         </Alert>
       </Snackbar>
     </Stack>

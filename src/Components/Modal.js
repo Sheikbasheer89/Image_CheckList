@@ -22,7 +22,7 @@ function Modal(props) {
     fnSaveOtherDBField,
     DocDbFields,
   } = props;
-
+  debugger;
   function fnGetDocDBName() {
     let Name = "";
     let DocDbFields___ = DocDbFields.filter(
@@ -103,7 +103,7 @@ function Modal(props) {
               </div>
             </span>
           )}
-          {Number(IsEntityExists) === 0 && (
+          {Number(IsEntityExists) == 0 && (
             <span>
               <strong>
                 {ResJSON["Name of Employer"]} is not recognized. Would you like

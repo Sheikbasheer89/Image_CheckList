@@ -88,7 +88,6 @@ export default function CustomInputAutocomplete(props) {
 }
 
   return (
-    <div>
       <div
         className="form-group divInputWrapper"
         onMouseEnter={(e) => {
@@ -181,6 +180,5 @@ export default function CustomInputAutocomplete(props) {
           ></FeedTwoToneIcon>
         </span>
       </div>
-    </div>
   );
 }

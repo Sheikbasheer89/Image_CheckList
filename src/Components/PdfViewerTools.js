@@ -42,18 +42,31 @@ const ControlPanel = (props) => {
     setPageNumber(Number(value));
   };
 
-  const isMinZoom = scale < 0.6;
+  const isMinZoom = scale < 0.1;
   const isMaxZoom = scale >= 2.0;
 
   const zoomOutClass = isMinZoom ? "disabled" : "clickable";
   const zoomInClass = isMaxZoom ? "disabled" : "clickable";
 
   const zoomOut = () => {
-    if (!isMinZoom) setScale(scale - 0.1);
+    if (!isMinZoom) {
+
+    const newScale = Math.max(scale - 0.1, 0.1);
+    setScale(newScale);
+
+    }
+    
+    // setScale(scale - 0.1);
   };
 
   const zoomIn = () => {
-    if (!isMaxZoom) setScale(scale + 0.1);
+    if (!isMaxZoom){
+      const newScale = Math.min(scale + 0.1, 2.0);
+      setScale(newScale);
+
+
+    } 
+    // setScale(scale + 0.1);
   };
 
   const handleRotateClick = () => {

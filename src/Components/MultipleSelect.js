@@ -32,14 +32,39 @@ const names = [
 ];
 
 export default function MultipleSelectCheckmarks(props) {
-  let { handleMultiSelect, value, label, Options, Typevalue, TypeText,  onMouseHover = () => {}, } = props;
+  let { handleMultiSelect, value, label, Options, Typevalue, TypeText,  onMouseHover = () => {}, selectedKey ="text" } = props;
+console.log("Opt= ", Options)
+if(selectedKey == "value"){
+  // debugger;
+  value = Options.filter((item)=>{     
+    return value.includes(item[Typevalue]);
 
+  }).map((item)=>{
+
+    return item[TypeText];
+  })
+
+}
   const handleChange = (event) => {
     const {
       target: { value },
     } = event;
 
+if(selectedKey == "value"){
+
+  
+  handleMultiSelect(Options.filter((item)=>{     
+    return value.includes(item[TypeText]);
+
+  }).map((item)=>{
+
+    return item[Typevalue];
+  }));
+}
+else{
+
     handleMultiSelect(typeof value === "string" ? value.split(",") : value);
+}
   };
 
   return (

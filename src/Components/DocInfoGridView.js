@@ -85,7 +85,7 @@ function ConditionalTable(props) {
               <div className="iheader" style={{ fontWeight: 800 }}>
                 {group[0]["DocType"] &&
                 group[0]["DocType"].toLowerCase().includes("condition")
-                  ? group[0]["DocType"]
+                  ? group[0]["DocType"].replace(/&amp;/g, "&")
                   : "Documents Uploaded that are not associated with an Underwriting Condition."}
               </div>
               <div className="iheader">
@@ -101,7 +101,7 @@ function ConditionalTable(props) {
                     <DropZone
                       setExtractionStatus={item.setExtractionStatus}
                       typeId={item["DocTypeId"]}
-                      label={item["ShortName"]}
+                      label={item["ShortName"].replace(/&amp;/g, "&")}
                       MultipleProgressbar={item.MultipleProgressbar}
                       {...item}
                       {...props}
@@ -210,7 +210,7 @@ function ConditionalTable(props) {
                               }}
                             >
                               <p  style={{ cursor: "pointer" }}>
-                                {item2.FileName.endsWith(".Pdf")
+                                {item2.FileName?.toLowerCase().endsWith(".pdf")
                                   ? item2.FileName
                                   : `${item2.FileName}.Pdf`}
                               </p>
