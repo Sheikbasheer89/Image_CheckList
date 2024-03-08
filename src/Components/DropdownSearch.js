@@ -34,8 +34,16 @@ const SearchableDropdown = ({
     setQuery(selectedVal);
 
   }, [selectedVal])
+
+//   useEffect(()=>{
+
+//     inputRef?.current.setAttribute('value', query);
+
+//   }, [query])
+
   const selectOption = (option) => {
     // setQuery(() => "");
+    debugger;
     setQuery(option.DocType);
     handleChange(option);
     setIsOpen((isOpen) => !isOpen);

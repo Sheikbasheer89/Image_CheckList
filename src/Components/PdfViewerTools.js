@@ -70,7 +70,9 @@ const ControlPanel = (props) => {
   };
 
   const handleRotateClick = () => {
+    
     setrotation((prevRotation) => (prevRotation + 90) % 360);
+    
   };
 
   const panWidth = () => {

@@ -779,6 +779,11 @@ border-top-left-radius: 5px !important;
   display: block;
   padding: 8px 10px;
 }
+#btnDummy:focus,#btnDummy:focus-visible{
+  background-color: inherit !important;
+  border:none !important;
+  display: none;
+}
 
 .dropdown .option.selected,
 .dropdown .option:hover {
