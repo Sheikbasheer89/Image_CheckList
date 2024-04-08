@@ -2,6 +2,7 @@ import "./App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Form from "./Components/SampleImageCheckList";
 import AgGrid from "./Components/AgGrid";
+import ViewSimilarDoc from "./Components/ViewSimilarDoc";
 import { useState } from "react";
 import { Context } from "./Components/CommonFunction";
 import SubDocumentFileResult from "./Components/SubDocumentFileResult";
@@ -12,6 +13,7 @@ function App() {
     { path: "/imagechecklistreact/index.html", Element: <Form /> },
     { path: "/imagechecklistreact/AgGrid", Element: <AgGrid /> },
     { path: "/imagechecklistreact/SubDocumentFileResult", Element: <SubDocumentFileResult /> },
+    { path: "/imagechecklistreact/ViewSimilarDoc", Element: <ViewSimilarDoc /> },
   ];
 
   if (window.location.href.indexOf("localhost") > -1) {

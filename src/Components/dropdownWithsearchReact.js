@@ -104,6 +104,7 @@ export default function DropDownWithSearch(props) {
     <div className="form-group divInputWrapper">
       <label>{props.cntrllabel}</label>
       <Select
+      isClearable={!false}
         options={mappedOptions}
         value={selectedOptions}
         onChange={handleSelect}
@@ -120,9 +121,9 @@ export default function DropDownWithSearch(props) {
         ref={inputRef}
         onFocus={() => {
           // console.log('inputvalues  selectedOptions.label',selectedOptions.label);
-          setinputvalues(selectedOptions.label);
+          setinputvalues(selectedOptions?.label||'');
           debugger;
-          inputRef.current.value = selectedOptions.label
+          inputRef.current.value = selectedOptions?.label||''
         }}
         onBlur={() => {
           

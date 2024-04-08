@@ -791,3 +791,19 @@ border-top-left-radius: 5px !important;
   color: #333;
 }
 
+.clsOutline {
+  padding: 10px 24px;
+  color: #fff;
+  border-radius: 6px;
+  border: 1px solid;
+  box-shadow: rgb(0 0 0 / 14%) 0px 4px 14px 1px;
+  background-color: #5b8bc8;
+  border-color: #5b8bc8;
+}
+
+button.outLine {
+  background-color: #fff !important;
+  color: #5b8bc8 !important;
+  border-width: 2px !important;
+  font-weight: 700 !important;
+}

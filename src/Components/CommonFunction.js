@@ -66,7 +66,7 @@ const TextBox = (props) => {
   const {
     label,
     onChange,
-    ResJSON,
+    ResJSON = {},
     name,
     onMouseHover = () => {},
     onMouseLeave,
@@ -75,15 +75,16 @@ const TextBox = (props) => {
     ScanDocId,
     DbFieldId,
     setChangeLogData,
-    GetAPIChangeLog,
+    GetAPIChangeLog = () => {}
   } = props;
 
+  const value = props.value || ResJSON[name] 
   return (
     <>
       <div
         className="form-group divInputWrapper"
         onMouseEnter={(e) => {
-          onMouseHover(e, ResJSON[name]);
+          onMouseHover(e, value);
         }}
         onMouseLeave={onMouseLeave}
       >
@@ -93,7 +94,7 @@ const TextBox = (props) => {
           className="form-control"
           onChange={onChange || null}
           name={name || null}
-          value={ResJSON !== [] ? ResJSON[name] : ""}
+          value={ResJSON !== [] ? value : ""}
           placeholder={label}
           style={{ width: "95%", display: "inline-block" }}
         />
@@ -234,7 +235,7 @@ const DynamicTextBox = (props) => {
     ScanDocId,
     DbFieldId,
     setChangeLogData,
-    GetAPIChangeLog,
+    GetAPIChangeLog = () => {},
     onblur = () => {},
     formatCurrency,
   } = props;

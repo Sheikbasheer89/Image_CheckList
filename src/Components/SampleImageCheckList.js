@@ -41,6 +41,7 @@ import { pdfjs } from "react-pdf";
 import ConditionalModal from "./ConditionModal";
 import ControlPanel from "./PdfViewerTools";
 import MenuOptions from "./MenuOption";
+import ViewSimilarDoc from "./ViewSimilarDoc";
 
 import CustomizedSnackbars from "./MessageComponents";
 import ConditionalRemainingCompleteModel from "./ConditionRemainingCompleted";
@@ -96,11 +97,10 @@ function Form() {
   const [EditedResponseMsg, setEditedResponseMsg] = useState("");
   const [DocReviewNeeded, setDocReviewNeeded] = useState("");
   const [ExtractedReviewNeeded, setExtractedReviewNeeded] = useState("");
-  const [OCRStatusResend, setOCRStatusResend] = useState('');
-  
+  const [OCRStatusResend, setOCRStatusResend] = useState("");
+
   const [ResndProcess, setResndProcess] = useState(0);
-  
-  
+
   const [isRotateChanged, setisRotateChanged] = useState(0);
   const [CoorinatesLocation, setCoorinatesLocation] = useState("");
   const [DocTypeValue, setDocTypeValue] = useState("0");
@@ -120,12 +120,19 @@ function Form() {
   const [UploadedDocValue, setUploadedDocValue] = useState("0");
   const [DocChangeFlag, setDocChangeFlag] = useState(false);
   const [BorrowerList, setBorrowerList] = useState([]);
-  const [EmployerList,setEmployerList] = useState([]);
+  const [EmployerList, setEmployerList] = useState([]);
   const [EmployerListSelected, setEmployerListSelected] = useState(0);
   const [BankList, setBankList] = useState([]);
   const [BankListSelected, setBankListSelected] = useState(0);
-  const [EditedJSONHistoryList, setEditedJSONHistoryList] =useState([]);
-  const [EditedJSONHistoryListSel, setEditedJSONHistoryListSel] =useState(0);
+  const [DonorNameSelected, setDonorNameSelected] = useState("");
+
+  const [ShowDonorName, setShowDonorName] = useState(0);
+
+  const [EditedJSONHistoryList, setEditedJSONHistoryList] = useState([]);
+  const [JSONHistoryList, setJSONHistoryList] = useState([]);
+
+  const [EditedJSONHistoryListSel, setEditedJSONHistoryListSel] = useState(0);
+  const [JSONHistoryListSel, setJSONHistoryListSel] = useState(0);
 
   const [OwnerofAssets, setOwnerofAssets] = useState([]);
 
@@ -231,6 +238,42 @@ function Form() {
     setConditionalRemainingModel(true);
   }
 
+  // useEffect(() => {
+  //   if (OriginalResJSON) {
+  //     console.log("OriginalResJSON====", OriginalResJSON);
+  //     const accountNumber =
+  //       JSON.parse(OriginalResJSON)?.["extraction_json"]?.["account_number"]||[];
+
+  //     const iaccountNumber =
+  //       JSON.parse(OriginalResJSON)?.["extraction_json"]?.["account"]||[];
+
+  //     const arr = iaccountNumber.flatMap((item, index) => {
+  //       return [
+  //        {
+  //           DocTypeID: 43,
+  //           Dbfieldid: !index? "3061" : "-3061",
+  //           ElementType: 0,
+  //           DisplayName:  "Account Number " + (index? (index + 1): ""),
+  //           Value: item["account_number"] || accountNumber[index],
+  //         }, {
+  //           DocTypeID: 43,
+  //           Dbfieldid: !index? "3062" : "-3062",
+  //           ElementType: 0,
+  //           DisplayName: item['type']+" Balance " + (index? (index + 1): ""),
+  //           Value: item["current_balance"],
+  //         },
+
+  //       ];
+  //     });
+  //     console.log("arrr", arr);
+  //     setDocDbFields((prevDocDetails) => {
+  //       debugger
+  //       const index = prevDocDetails.indexOf(prevDocDetails.filter(item=>item.Dbfieldid == 3061)?.[0] || {})
+
+  //       return [...prevDocDetails.slice(0,index), ...arr,...prevDocDetails.slice(index+1,prevDocDetails.length)];
+  //     });
+  //   }
+  // }, [OriginalResponsefromAPI, OriginalResJSON]);
   const WhichBorrowerList = ({ fields, index, isPaystub = false }) => {
     //debugger;
 
@@ -282,7 +325,14 @@ function Form() {
   //   handleMultiSelect(handleMultiSelect);
   // }, [AssetTypeOptionValue])
   const handleMultiSelect = (val, flag) => {
-    val = val.filter(item => item !== "");
+    if (flag != 1) {
+      if (val && val.indexOf("Gift in Borrower Possession") > -1)
+        setShowDonorName(1);
+      else setShowDonorName(0);
+    }
+
+    val = val.filter((item) => item !== "");
+    val = val.filter((item, index) => val.indexOf(item) === index);
     if (flag == 1) {
       setOwnerofAssets(val);
     } else {
@@ -321,10 +371,9 @@ function Form() {
         (item) => item.DisplayName === "Which Borrower"
       );
 
-      
       let Parsed_ = {};
       Parsed_["Which Borrower"] = DocDBField_[0].Value;
-      
+
       DocDBField_ = DocDbFields.filter(
         (item) => item.DisplayName === "Name of Institution"
       );
@@ -340,7 +389,7 @@ function Form() {
 
     if (Number(DocTypeValue) === 43 && OwnerofAssets) {
       DocDbFields__ = DocDbFields__.map((item) => {
-        if (item.DisplayName === "Owner of this Asset") {
+        if (item.DisplayName === "Link to Account Holder") {
           item.Value = BorrowerList.filter(
             (borrower) => OwnerofAssets.indexOf(borrower["CustId"]) !== -1
           )
@@ -403,6 +452,7 @@ function Form() {
         console.log(activeDropzone);
         handleFooterMsg("Saved Successfully.");
         setEnableSave(false);
+        // if (iReviewed)
         fnSendFeedbacktoAPI(DocDbFields__);
 
         fnRunImageValidation(1);
@@ -614,55 +664,48 @@ function Form() {
 
   function capitalizeEachWord(str) {
     return str.replace(/\b\w/g, function (match) {
-        return match.toUpperCase();
+      return match.toUpperCase();
     });
-}
-async function fnStatusforResend(iJobId){
-  // if(OCRStatusResend == "")
-  //   setOCRStatusResend('Extracting PDF');
-  const result = await handleAPIHuge({
-    name: "fnMetaAPIStatusCheckPollingWithOutWait",
-    params: {
-      LoanId: Number(LoanId),
-      JobId: iJobId,
-    },
-  });
-
-  let CurrentStatus = JSON.parse(result.split("~")[0]);
-  setOCRStatusResend(capitalizeEachWord(CurrentStatus.status).replace(/ocr/gi, 'OCR'));
-  
-  if (
-    !CurrentStatus.status.includes("Failed") &&
-    !CurrentStatus.status.includes("Completed")
-  ) {
-
-    setTimeout(() => {
-      fnStatusforResend(iJobId);
-    }, 500); 
-
   }
-  else{
+  async function fnStatusforResend(iJobId) {
+    // if(OCRStatusResend == "")
+    //   setOCRStatusResend('Extracting PDF');
+    const result = await handleAPIHuge({
+      name: "fnMetaAPIStatusCheckPollingWithOutWait",
+      params: {
+        LoanId: Number(LoanId),
+        JobId: iJobId,
+      },
+    });
 
-    setResndProcess(0);
+    let CurrentStatus = JSON.parse(result.split("~")[0]);
+    setOCRStatusResend(
+      capitalizeEachWord(CurrentStatus.status).replace(/ocr/gi, "OCR")
+    );
 
+    if (
+      !CurrentStatus.status.includes("Failed") &&
+      !CurrentStatus.status.includes("Completed")
+    ) {
+      setTimeout(() => {
+        fnStatusforResend(iJobId);
+      }, 500);
+    } else {
+      setResndProcess(0);
+    }
+    let fileType = JSON.parse(result.split("~")[0]).doc_type || "Miscellaneous";
+
+    if (CurrentStatus.status.includes("Failed"))
+      setOCRStatusResend(capitalizeEachWord(CurrentStatus.status));
+    if (CurrentStatus.status.includes("Completed"))
+      setOCRStatusResend(
+        `This document is recognized as ${fileType} and was moved to ${fileType} section.`
+      );
   }
-  let fileType =
-  JSON.parse(result.split("~")[0]).doc_type || "Miscellaneous";
-
-
-  if (CurrentStatus.status.includes("Failed"))
-  setOCRStatusResend(capitalizeEachWord(CurrentStatus.status));
-  if (CurrentStatus.status.includes("Completed"))
-  setOCRStatusResend(`This document is recognized as ${fileType} and was moved to ${fileType} section.`);
-
-
-  
-
-}
 
   function fnResendOCR(iFileName) {
     setResndProcess(1);
-    setOCRStatusResend('');
+    setOCRStatusResend("");
     let UploadedMonthlyIncome = uploadedDocument.filter(
       (item) => item.ScanDocId == scandocId
     );
@@ -679,11 +722,11 @@ async function fnStatusforResend(iJobId){
       },
     })
       .then((response) => {
-        let result = response.split('~')[2];
+        let result = response.split("~")[2];
         console.log(response);
         handleFooterMsg(result);
-        
-        fnStatusforResend(response.split('~')[0]);
+
+        fnStatusforResend(response.split("~")[0]);
         // handlePoolingReSend(jobId)
       })
       .catch((error) => {
@@ -804,16 +847,19 @@ async function fnStatusforResend(iJobId){
 
       const image = await pdfDoc.embedPng(imgBytes);
       const { width, height } = image.scale(1);
-      
-      const scaleFactor = Math.min(canvas.width / width, canvas.height / height);
+
+      const scaleFactor = Math.min(
+        canvas.width / width,
+        canvas.height / height
+      );
 
       const pdfWidth = width * scaleFactor;
       const pdfHeight = height * scaleFactor;
-      
+
       // Calculate the position to center the image on the page
       // const xPosition = (canvas.width - pdfWidth) / 2;
       // const yPosition = (canvas.height - pdfHeight) / 2;
-      
+
       // Draw the image with adjusted size and position
       pdfPage.drawImage(image, {
         x: 0,
@@ -836,34 +882,40 @@ async function fnStatusforResend(iJobId){
 
       const pdfBytes = await pdfDoc.save();
       const blob = new Blob([pdfBytes], { type: "application/pdf" });
-      
+
       let UploadedMonthlyIncome = uploadedDocument.filter(
         (item) => item.ScanDocId == scandocId
       );
 
       let fileName = UploadedMonthlyIncome[0].FileName;
 
-// Check if the file name ends with .pdf
-if (!fileName.toLowerCase().endsWith('.pdf')) {
-    // If it doesn't end with .pdf, add it to the file name
-    fileName += '.pdf';
-}
-if (fileName.indexOf('_ModifiedFromDocUpload') === -1) {
-    fileName= fileName.replace('.pdf', '_ModifiedFromDocUpload.pdf');
-}
+      // Check if the file name ends with .pdf
+      if (!fileName.toLowerCase().endsWith(".pdf")) {
+        // If it doesn't end with .pdf, add it to the file name
+        fileName += ".pdf";
+      }
+      if (fileName.indexOf("_ModifiedFromDocUpload") === -1) {
+        fileName = fileName.replace(".pdf", "_ModifiedFromDocUpload.pdf");
+      }
       const formData = new FormData();
-      formData.append('pdfFile', blob, fileName);
+      formData.append("pdfFile", blob, fileName);
 
       // Send PDF file to C# endpoint
-      const response = await fetch("https://www.solutioncenter.biz/LoginCredentialsAPI/api/UploadModifiedFile?LoanId=" + LoanId + "&ScandocId=" + scandocId  , {
-        method: 'POST',
-        body: formData
-      });
+      const response = await fetch(
+        "https://www.solutioncenter.biz/LoginCredentialsAPI/api/UploadModifiedFile?LoanId=" +
+          LoanId +
+          "&ScandocId=" +
+          scandocId,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
       if (response.ok) {
-        console.log('PDF sent to C# successfully');
+        console.log("PDF sent to C# successfully");
       } else {
-        console.error('Failed to send PDF to C#');
+        console.error("Failed to send PDF to C#");
       }
       // const url = URL.createObjectURL(blob);
 
@@ -929,17 +981,19 @@ if (fileName.indexOf('_ModifiedFromDocUpload') === -1) {
         if (key === "account") {
           for (let i = 0; i < data[key].length; i++) {
             let balance = data[key][i].value.current_balance;
-            if (balance.replace("$", "")
-            .replace(",", "") === targetValue.replace("$", "")
-            .replace(",", "")) {
+            if (
+              balance.replace("$", "").replace(",", "") ===
+              targetValue.replace("$", "").replace(",", "")
+            ) {
               return data[key][i][iKey];
             }
           }
           for (let i = 0; i < data[key].length; i++) {
             let balance = data[key][i].value.type;
-            if (balance.replace("$", "")
-            .replace(",", "") === targetValue.replace("$", "")
-            .replace(",", "")) {
+            if (
+              balance.replace("$", "").replace(",", "") ===
+              targetValue.replace("$", "").replace(",", "")
+            ) {
               return data[key][i][iKey];
             }
           }
@@ -951,9 +1005,10 @@ if (fileName.indexOf('_ModifiedFromDocUpload') === -1) {
               data[key][i].value.hasOwnProperty("current_balance")
             ) {
               let balance = data[key][i].value.current_balance;
-              if (balance.replace("$", "")
-              .replace(",", "") === targetValue.replace("$", "")
-              .replace(",", "")) {
+              if (
+                balance.replace("$", "").replace(",", "") ===
+                targetValue.replace("$", "").replace(",", "")
+              ) {
                 return data[key][i][iKey];
               }
             } else if (
@@ -961,15 +1016,16 @@ if (fileName.indexOf('_ModifiedFromDocUpload') === -1) {
               data[key][i].value.includes("$")
             ) {
               let balance = data[key][i].value;
-              if (balance.replace("$", "")
-              .replace(",", "") === targetValue.replace("$", "")
-              .replace(",", "")) {
+              if (
+                balance.replace("$", "").replace(",", "") ===
+                targetValue.replace("$", "").replace(",", "")
+              ) {
                 return data[key][i][iKey];
               }
-             
-            } else if (data[key][i].value.replace("$", "")
-            .replace(",", "") === targetValue.replace("$", "")
-            .replace(",", "")) {
+            } else if (
+              data[key][i].value.replace("$", "").replace(",", "") ===
+              targetValue.replace("$", "").replace(",", "")
+            ) {
               return data[key][i][iKey];
             }
             // else if(targetValue.split(' ').filter(item=>item).some((iName)=>{ return data[key][i].value?.includes(iName) })){
@@ -982,15 +1038,15 @@ if (fileName.indexOf('_ModifiedFromDocUpload') === -1) {
             data[key].value.includes("$")
           ) {
             let balance = data[key].value;
-            if (balance.replace("$", "")
-            .replace(",", "") === targetValue.replace("$", "")
-            .replace(",", "")) {
+            if (
+              balance.replace("$", "").replace(",", "") ===
+              targetValue.replace("$", "").replace(",", "")
+            ) {
               return data[key][iKey];
             }
           } else if (
-            data[key].value.replace("$", "")
-            .replace(",", "") === targetValue.replace("$", "")
-            .replace(",", "") ||
+            data[key].value.replace("$", "").replace(",", "") ===
+              targetValue.replace("$", "").replace(",", "") ||
             data[key].value === DateCheck
           ) {
             return data[key][iKey];
@@ -1290,64 +1346,64 @@ if (fileName.indexOf('_ModifiedFromDocUpload') === -1) {
       console.log("getCoordinates", getCoordinates);
 
       // setTimeout(() => {
-        if (getCoordinates && getCoordinates.x0) {
-          drawBox(
-            getCoordinates.x0,
-            getCoordinates.y0,
-            getCoordinates.x1,
-            getCoordinates.y1,
-            document
-              .querySelector(".react-pdf__Page__canvas")
-              .style.height.replace("px", ""),
-            pageNumber
-          );
-        } else {
-          document.querySelectorAll(".targetElement").forEach((ele) => {
-            ele.remove();
+      if (getCoordinates && getCoordinates.x0) {
+        drawBox(
+          getCoordinates.x0,
+          getCoordinates.y0,
+          getCoordinates.x1,
+          getCoordinates.y1,
+          document
+            .querySelector(".react-pdf__Page__canvas")
+            .style.height.replace("px", ""),
+          pageNumber
+        );
+      } else {
+        document.querySelectorAll(".targetElement").forEach((ele) => {
+          ele.remove();
+        });
+      }
+      eleTo = document.querySelectorAll(".targetElement");
+      // eleTo = document.querySelectorAll('.targetElement')
+      if (eleFrom && eleTo) {
+        console.log("eleFrom =" + eleFrom + "eleTo =" + eleTo);
+        let ele = eleTo[0];
+        handleRemoveLine();
+
+        // if (document.querySelectorAll(".txtHighlight")?.length > 0) {
+        //   document
+        //     ?.querySelector(".txtHighlight")
+        //     ?.classList.remove("txtHighlight");
+        // }
+        // try {
+        //   if (ele.classList !== undefined) ele?.classList.add("txtHighlight");
+        // } catch (e) {}
+
+        try {
+          var line_ = new LeaderLine(eleFrom, ele, {
+            color: "blue",
+            size: 2.5,
+            path: "fluid",
+            // startPlug: "disc",
           });
-        }
-        eleTo = document.querySelectorAll(".targetElement");
-        // eleTo = document.querySelectorAll('.targetElement')
-        if (eleFrom && eleTo) {
-          console.log("eleFrom =" + eleFrom + "eleTo =" + eleTo);
-          let ele = eleTo[0];
+          // var line_ = new LeaderLine(
+          //   eleFrom,
+          //   LeaderLine.pointAnchor(ele, {
+          //     x: 379.6327973019661,
+          //     y: 688.0023458332364,
+          //   }),
+          //   {
+          //     color: "blue",
+          //     size: 2.5,
+          //     path: "fluid",
+          //     // startPlug: "disc",
+          //   }
+          // );
+        } catch (error) {
+          console.log(error);
           handleRemoveLine();
-
-          // if (document.querySelectorAll(".txtHighlight")?.length > 0) {
-          //   document
-          //     ?.querySelector(".txtHighlight")
-          //     ?.classList.remove("txtHighlight");
-          // }
-          // try {
-          //   if (ele.classList !== undefined) ele?.classList.add("txtHighlight");
-          // } catch (e) {}
-
-          try {
-            var line_ = new LeaderLine(eleFrom, ele, {
-              color: "blue",
-              size: 2.5,
-              path: "fluid",
-              // startPlug: "disc",
-            });
-            // var line_ = new LeaderLine(
-            //   eleFrom,
-            //   LeaderLine.pointAnchor(ele, {
-            //     x: 379.6327973019661,
-            //     y: 688.0023458332364,
-            //   }),
-            //   {
-            //     color: "blue",
-            //     size: 2.5,
-            //     path: "fluid",
-            //     // startPlug: "disc",
-            //   }
-            // );
-          } catch (error) {
-            console.log(error);
-            handleRemoveLine();
-          }
-          setLine(line_);
         }
+        setLine(line_);
+      }
       // }, 100);
     } catch (error) {
       console.log("LeaderLine", error);
@@ -1393,11 +1449,9 @@ if (fileName.indexOf('_ModifiedFromDocUpload') === -1) {
     }
     if (flag == 1) {
       setWhichEnity(value);
-      if(DocTypeValue == 169)
-        setEmployerListSelected(value);
+      if (DocTypeValue == 169) setEmployerListSelected(value);
 
-      if(DocTypeValue == 43)
-        setBankListSelected(value);
+      if (DocTypeValue == 43) setBankListSelected(value);
     }
   };
 
@@ -1412,11 +1466,9 @@ if (fileName.indexOf('_ModifiedFromDocUpload') === -1) {
     setFile(file);
   };
 
-  useEffect(()=>{
-
+  useEffect(() => {
     setisRotateChanged(1);
-
-  },[rotation])
+  }, [rotation]);
 
   function onDocumentLoadSuccess({ numPages }) {
     setNumPages(numPages);
@@ -1426,8 +1478,9 @@ if (fileName.indexOf('_ModifiedFromDocUpload') === -1) {
     setEmployerListSelected(0);
     setBankListSelected(0);
     setrotation(0);
+    setShowDonorName(0);
     setisRotateChanged(0);
-    setOCRStatusResend('');
+    setOCRStatusResend("");
     setTimeout(() => {
       if (OriginalResJSON) {
         let ParsedJson;
@@ -1460,7 +1513,7 @@ if (fileName.indexOf('_ModifiedFromDocUpload') === -1) {
             let Filterdoctype = DocType.filter((items) => {
               return (
                 items.DocType.toString().replaceAll(" ", "").toLowerCase() ===
-                DocTypeval.toLowerCase()
+                DocTypeval.replaceAll(" ", "").toLowerCase()
               );
             });
 
@@ -1649,7 +1702,13 @@ if (fileName.indexOf('_ModifiedFromDocUpload') === -1) {
         let iBankList = JSON.parse(response["Table4"][0].BankList) || [];
         setBankList(iBankList);
 
-        let iEmployerList = JSON.parse(response["Table5"][0].EmployerList) || [];
+        let DonorName = iBankList.filter((item) => item.IsGiftRelated == 1);
+        if (DonorName?.length > 0) {
+          setDonorNameSelected(DonorName[0]?.Name || "");
+        } else setDonorNameSelected("");
+
+        let iEmployerList =
+          JSON.parse(response["Table5"][0].EmployerList) || [];
         setEmployerList(iEmployerList);
 
         let FilteredPassedValidation1 = totalArr.filter(
@@ -1891,38 +1950,41 @@ if (fileName.indexOf('_ModifiedFromDocUpload') === -1) {
     setUploadedDocument([...ResDoc, ...uploadedDocument]);
   }
 
-function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
-
-  if(iEditedJSONHistoryListSel == 0) return;
-  handleAPI({
-    name: "GetEditedJSONHistory",
-    params: { Id: iEditedJSONHistoryListSel },
-  })
-    .then((response) => {
-      // console.log(response);
-     
-      setEditedResJSON("");
-      if (response.split("~")[0]?.trim() ?? "") {
-        // if (JSON.stringify(response.split("~")[1]) !== JSON.stringify(response.split("~")[2]))
-        setEditedResJSON(response.split("~")[0]);
-      }
-      if (response.split("~")[1]?.trim() ?? "") {
-        // if (JSON.stringify(response.split("~")[1]) !== JSON.stringify(response.split("~")[2]))
-        setEditedJobId(response.split("~")[1]);
-      }
-      if (response.split("~")[2]?.trim() ?? "") {
-        // if (JSON.stringify(response.split("~")[1]) !== JSON.stringify(response.split("~")[2]))
-        setEditedResponseMsg(response.split("~")[2]);
-      }
-
-     
+  function fnGetEditedJSONHistory(iEditedJSONHistoryListSel, iflag) {
+    if (iEditedJSONHistoryListSel == 0) return;
+    handleAPI({
+      name: "GetEditedJSONHistory",
+      params: { Id: iEditedJSONHistoryListSel, flag: iflag || 0 },
     })
-    .catch((error) => {
-      ////debugger;
-      console.log("error", error);
-    });
+      .then((response) => {
+        // console.log(response);
 
-}
+        if (iflag == 1) {
+          if (response.split("~")[0]?.trim() ?? "") {
+            // if (JSON.stringify(response.split("~")[1]) !== JSON.stringify(response.split("~")[2]))
+            setOriginalResponsefromAPI(response.split("~")[0]);
+          }
+        } else {
+          setEditedResJSON("");
+          if (response.split("~")[0]?.trim() ?? "") {
+            // if (JSON.stringify(response.split("~")[1]) !== JSON.stringify(response.split("~")[2]))
+            setEditedResJSON(response.split("~")[0]);
+          }
+          if (response.split("~")[1]?.trim() ?? "") {
+            // if (JSON.stringify(response.split("~")[1]) !== JSON.stringify(response.split("~")[2]))
+            setEditedJobId(response.split("~")[1]);
+          }
+          if (response.split("~")[2]?.trim() ?? "") {
+            // if (JSON.stringify(response.split("~")[1]) !== JSON.stringify(response.split("~")[2]))
+            setEditedResponseMsg(response.split("~")[2]);
+          }
+        }
+      })
+      .catch((error) => {
+        ////debugger;
+        console.log("error", error);
+      });
+  }
 
   function fnGetImagefromServer(ScandocId) {
     setDocViewer({ ...DocViewer, prevfile: null });
@@ -2037,10 +2099,17 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
         }
         setOriginalResponsefromAPI(Json);
         setEditedJSONHistoryList([]);
+        setJSONHistoryList([]);
         if (response.split("~")[5]?.trim() ?? "") {
           // if (JSON.stringify(response.split("~")[1]) !== JSON.stringify(response.split("~")[2]))
           setEditedJSONHistoryList(JSON.parse(response.split("~")[5]));
           setEditedJSONHistoryListSel(JSON.parse(response.split("~")[5])[0].Id);
+        }
+
+        if (response.split("~")[6]?.trim() ?? "") {
+          // if (JSON.stringify(response.split("~")[1]) !== JSON.stringify(response.split("~")[2]))
+          setJSONHistoryList(JSON.parse(response.split("~")[6]));
+          setJSONHistoryListSel(JSON.parse(response.split("~")[6])[0].Id);
         }
 
         // } else {
@@ -2094,7 +2163,7 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
       let Filterdoctype = DocType.filter((items) => {
         return (
           items.DocType.toString().replaceAll(" ", "").toLowerCase() ===
-          docType.toLowerCase()
+          docType.replaceAll(" ", "").toLowerCase()
         );
       });
 
@@ -2271,7 +2340,14 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
           IsBorExists: WhichBorrower != 0 && WhichBorrower != -1 ? 1 : 0,
           IsEntityExists: WhichEnity != 0 && WhichEnity != -1 ? 1 : 0,
           BorId: WhichBorrower != 0 && WhichBorrower != -1 ? WhichBorrower : 0,
-          EntityId: WhichEnity != 0 && WhichEnity != -1 ? WhichEnity : (BankListSelected != 0 && DocTypeValue == 43) ? BankListSelected : (EmployerListSelected != 0 && DocTypeValue == 169) ? EmployerListSelected : 0,
+          EntityId:
+            WhichEnity != 0 && WhichEnity != -1
+              ? WhichEnity
+              : BankListSelected != 0 && DocTypeValue == 43
+              ? BankListSelected
+              : EmployerListSelected != 0 && DocTypeValue == 169
+              ? EmployerListSelected
+              : 0,
           ScandocId:
             scandocId !== "" && scandocId
               ? scandocId
@@ -2286,6 +2362,7 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
         .then((response) => {
           console.log(response);
           handleFooterMsg("Saved Successfully.");
+          // if (iReviewed)
           fnSendFeedbacktoAPI();
           setWhichBorrower(0);
           setWhichEnity(0);
@@ -2315,11 +2392,8 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
       )
         validateJSON = false;
 
-        if (
-          JSON.stringify(OrgDocDbFields) ===
-          JSON.stringify(DocDbFields)
-        )
-          validateJSON = false;
+      if (JSON.stringify(OrgDocDbFields) === JSON.stringify(DocDbFields))
+        validateJSON = false;
 
       setOrgDocDbFields(structuredClone(DocDbFields));
       // if (DocDbFields__ !== undefined && DocDbFields__ !== "") {
@@ -2396,7 +2470,10 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
         let EntityLists = SplitRes[3];
 
         if (flag === 2) {
-          if ((Number(BorrExists) === 1 && Number(EntityExists) === 1) || (BankListSelected.length > 0 && OwnerofAssets.length > 0)) {
+          if (
+            (Number(BorrExists) === 1 && Number(EntityExists) === 1) ||
+            (BankListSelected.length > 0 && OwnerofAssets.length > 0)
+          ) {
             IsCheckValidated = 1;
             fnSaveOtherDBField(1);
             return;
@@ -2404,7 +2481,10 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
           // EntityExists = 1;
         }
 
-        if ((Number(BorrExists) === 1 && Number(EntityExists) === 1) || (EmployerListSelected.length > 0)) {
+        if (
+          (Number(BorrExists) === 1 && Number(EntityExists) === 1) ||
+          EmployerListSelected.length > 0
+        ) {
           if (flag !== 2) fnSaveFieldsToDW();
         } else {
           setIsBorrExists(BorrExists);
@@ -2570,12 +2650,20 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
         let reviewedBy = UploadedMonthlyIncome[0].ReviewedBy || "";
         let isRevied = UploadedMonthlyIncome[0].ImageStatus == 1;
         let iReviewTime = "";
+        if (isRevied && reviewedDate == "" && reviewedBy == "") {
+          reviewedBy = "Auto";
+          reviewedDate = "Manually Updated";
+        }
         if (reviewedDate) {
-          iReviewTime = reviewedDate + " by " + reviewedBy;
+          if (reviewedDate == "Manually Updated") {
+            iReviewTime = reviewedDate;
+          } else {
+            iReviewTime = reviewedDate + " by " + reviewedBy;
+          }
         } else {
           iReviewTime = reviewedBy;
         }
-        
+
         // if( Number(OrgDocTypeValue) !== Number(DocTypeValue) &&
         // Number(OrgDocTypeValue) != 0){
         setiReviewed(isRevied);
@@ -2669,7 +2757,6 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
       console.log("FirstClick", ResJSON);
       fnMapExtractionJsonField(DocTypeValue);
       setUpdateMappingonlyonNew(false);
-       
     }
     // }, 500);
   }, [UpdateMappingonlyonNew]);
@@ -2803,6 +2890,7 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
                 ? JSON.parse(JSON.parse(response).Table[0].Column1)
                 : [];
             // setDocDbFields([...DocDbFields, ...DocDbFields_]);
+            debugger;
             setDocDbFields(DocDbFields_);
 
             // if (DocTypeValue == 23)
@@ -2852,7 +2940,7 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
         }
 
         if (iEmployerName) {
-          setEmployerListSelected([iEmployerName.Id]);            
+          setEmployerListSelected([iEmployerName.Id]);
         }
       }
 
@@ -2900,38 +2988,30 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
     return new Intl.DateTimeFormat("en-US", options).format(date);
   }
 
-
-  useEffect(()=>{
-
+  useEffect(() => {
     let iiOrgDocDbFields = DocDbFields;
-     
-    
-     let  iAssets = BorrowerList.find((c) =>
-        c.CustId == OwnerofAssets
-      );
-    if(iAssets){
-                    iiOrgDocDbFields.forEach((iiitem)=>{
-                        if(iiitem.Dbfieldid == 7216 && iiitem.Value != ''){
-                          
-                          iiitem.Value = iAssets.Name;
-                        }
 
-                        if(iiitem.Dbfieldid == 3059){
-                          const result = AssetTypeOPtions.filter(
-                            (option) => AssetTypeOptionValue.indexOf(option["TypeDesc"]) !== -1
-                          )
-                            .map((e) => e.TypeDesc)
-                            .join(", ");
-                          // if(iiitem.Value != '')
-                          iiitem.Value = result;
-                        };  
-                        
-                    })
-                    setDocDbFields(iiOrgDocDbFields);
-                    setOrgDocDbFields(iiOrgDocDbFields);
-                  }
+    let iAssets = BorrowerList.find((c) => c.CustId == OwnerofAssets);
+    if (iAssets) {
+      iiOrgDocDbFields.forEach((iiitem) => {
+        if (iiitem.Dbfieldid == 7216 && iiitem.Value != "") {
+          iiitem.Value = iAssets.Name;
+        }
 
-  },[OwnerofAssets, AssetTypeOptionValue])
+        if (iiitem.Dbfieldid == 3059) {
+          const result = AssetTypeOPtions.filter(
+            (option) => AssetTypeOptionValue.indexOf(option["TypeDesc"]) !== -1
+          )
+            .map((e) => e.TypeDesc)
+            .join(", ");
+          // if(iiitem.Value != '')
+          iiitem.Value = result;
+        }
+      });
+      setDocDbFields(iiOrgDocDbFields);
+      setOrgDocDbFields(iiOrgDocDbFields);
+    }
+  }, [OwnerofAssets, AssetTypeOptionValue]);
   function fnSaveReview() {
     let IsReviewed = 0;
     if (iReviewed) IsReviewed = 1;
@@ -3015,7 +3095,7 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
           Array.isArray(iParsedJson["extraction_json"])
         ) {
           var extractionJsonArray = iParsedJson["extraction_json"];
-          ParsedJson = extractionJsonArray[0];
+          ParsedJson = [extractionJsonArray[0]];
         }
 
         if (iReviewed && EditedResJSON) {
@@ -3024,10 +3104,93 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
 
         if (ParsedJson !== undefined) {
           if (Number(doctypeId) === Number(43)) {
+            let iAccountHolder = ParsedJson.account_holder.map(
+              (item, index) => {
+                return item;
+              }
+            );
+
+            let iaccount_number = ParsedJson.account_number
+              .filter((i, index) => index != 0)
+              .map((item, index) => {
+                return item;
+              });
+
+            console.log("iAccountHolder", iAccountHolder);
+            if (iAccountHolder && iAccountHolder.length > 0) {
+              const hasDbfieldid = DocDbFields.some(
+                (item) => item.Dbfieldid === -7215
+              );
+
+              if (!hasDbfieldid) {
+                let copyDocDbFields = DocDbFields;
+
+                copyDocDbFields.forEach((item, index) => {
+                  if (Number(item.Dbfieldid) === Number(-3058)) {
+                    iAccountHolder.forEach((i, ind) => {
+                      let duplicateItem = {
+                        ...item,
+                        Value: i,
+                        Dbfieldid: -7216 + 1,
+                        ElementType: 0,
+                        DisplayName: "Account Holder " + (ind ? ind : ""),
+                      }; // Create a shallow copy of the item
+                      // copyDocDbFields.push(duplicateItem);
+                      debugger;
+                      copyDocDbFields.splice(index + ind + 1, 0, duplicateItem);
+                    });
+                    // copyDocDbFields = copyDocDbFields.filter((item) => item.DbFieldId !== -7216);
+                  }
+                });
+
+                console.log("copyDocDbFields=", copyDocDbFields);
+                setDocDbFields(copyDocDbFields);
+              }
+            }
+
+            if (iaccount_number && iaccount_number.length > 0) {
+              const hasDbfieldid = DocDbFields.some(
+                (item) => item.Dbfieldid === -8385
+              );
+
+              if (!hasDbfieldid) {
+                let copyDocDbFields = DocDbFields;
+
+                copyDocDbFields.forEach((item, index) => {
+                  if (Number(item.Dbfieldid) === Number(8386)) {
+                    iaccount_number.forEach((i, ind) => {
+                      let duplicateItem = {
+                        ...item,
+                        Value: i,
+                        Dbfieldid: -8386 + 1,
+                        ElementType: 0,
+                        DisplayName: "Account Number " + (ind ? ind + 1 : "1"),
+                      }; // Create a shallow copy of the item
+                      // copyDocDbFields.push(duplicateItem);
+                      debugger;
+                      copyDocDbFields.splice(
+                        index - 1 + (ind + 1),
+                        0,
+                        duplicateItem
+                      );
+                    });
+                    // copyDocDbFields = copyDocDbFields.filter((item) => item.DbFieldId !== -7216);
+                  }
+                });
+
+                console.log("copyDocDbFields=", copyDocDbFields);
+                setDocDbFields(copyDocDbFields);
+              }
+            }
+          }
+        }
+
+        if (ParsedJson !== undefined) {
+          if (Number(doctypeId) === Number(43)) {
             if (ParsedJson.financial_institution !== undefined) {
               console.log(ParsedJson);
               DocDbFields.forEach((item) => {
-                if (Number(item.Dbfieldid) === Number(3058)){
+                if (Number(item.Dbfieldid) === Number(3058)) {
                   item.Value = ParsedJson.financial_institution || "";
                   setBankListSelected(0);
                   let iBankLi = BankList.find(
@@ -3043,7 +3206,6 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
                   if (iBankLi) {
                     setBankListSelected([iBankLi.Id]);
                   }
-
                 }
 
                 if (Number(item.Dbfieldid) === Number(4652))
@@ -3063,6 +3225,9 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
                       ""
                     ) || "";
 
+                // if (Number(item.Dbfieldid) === Number(-7216)) {
+                //       item.Value = ParsedJson.account_holder[0] || "";
+                // }
                 if (Number(item.Dbfieldid) === Number(3052)) {
                   item.Value = ParsedJson.account_holder[0] || "";
                   // setOwnerofAssets(BorrowerList.filter(borrower => OwnerofAssets.indexOf(borrower[ParsedJson.account_holder[0]]) !== -1)[0].CustId)
@@ -3073,18 +3238,20 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
 
                   if (iOwnerAssets == undefined) {
                     iOwnerAssets = BorrowerList.find((c) =>
-                      c.Name?.trim().indexOf(ParsedJson.account_holder[0].trim())
+                      c.Name?.trim().indexOf(
+                        ParsedJson.account_holder[0].trim()
+                      )
                     );
                   }
 
                   if (iOwnerAssets) {
                     setOwnerofAssets([iOwnerAssets.CustId]);
                     let iiOrgDocDbFields = OrgDocDbFields;
-                    iiOrgDocDbFields.forEach((iiitem)=>{
-                        if(iiitem.Dbfieldid == 7216){
-                          iiitem.Value = iOwnerAssets.Name;
-                        }
-                    })
+                    iiOrgDocDbFields.forEach((iiitem) => {
+                      if (iiitem.Dbfieldid == 7216) {
+                        iiitem.Value = iOwnerAssets.Name;
+                      }
+                    });
                     setOrgDocDbFields(iiOrgDocDbFields);
                   }
                   // setOwnerofAssets(BorrowerList.find(borrower => OwnerofAssets.indexOf(borrower[ParsedJson.account_holder[0]]) !== -1)
@@ -3127,8 +3294,8 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
 
                     let TotalCurrency = formatCurrency(
                       parseFloat(CurrentBalChk) +
-                      parseFloat(CurrentBalSav) +
-                      parseFloat(CurrentBalReg)
+                        parseFloat(CurrentBalSav) +
+                        parseFloat(CurrentBalReg)
                     );
 
                     item.Value = TotalCurrency;
@@ -3150,7 +3317,9 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
                         .replace("$", "")
                         .replace(",", "");
 
-                    let TotalCurrency = formatCurrency(parseFloat(CurrentBalSav).toFixed(2));
+                    let TotalCurrency = formatCurrency(
+                      parseFloat(CurrentBalSav).toFixed(2)
+                    );
 
                     item.Value = TotalCurrency;
                   });
@@ -3215,8 +3384,8 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
 
               setUpdateMappingonlyonNew(false);
               // setTimeout(() => {
-                setOrgDocDbFields(structuredClone(DocDbFields));
-              // }, 1000); 
+              setOrgDocDbFields(structuredClone(DocDbFields));
+              // }, 1000);
             }
           } else if (Number(doctypeId) === Number(23)) {
             console.log(ParsedJson);
@@ -3448,7 +3617,7 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
           } else if (Number(doctypeId) === Number(253)) {
             console.log(ParsedJson);
             DocDbFields.forEach((item) => {
-              if (Number(item.Dbfieldid) === Number(2891)){
+              if (Number(item.Dbfieldid) === Number(2891)) {
                 item.Value = ParsedJson["Name of Employer"] || "";
               }
               if (Number(item.Dbfieldid) === Number(7649))
@@ -3608,9 +3777,6 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
             ResJSON["Employer Full Address"];
           OriginalJSON_["Employer City"] = ResJSON["Employer City"];
           OriginalJSON_["Employer Address"] = ResJSON["Employer Address"];
-          
-         
-
         } else {
           if (
             Number(DocTypeValue) === 43 &&
@@ -3633,16 +3799,41 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
                 OriginalJSON_.account_number[0] = item.Value;
 
               if (Number(item.Dbfieldid) === Number(3062)) {
-                OriginalJSON_?.account?.forEach((bank) => {
-                  if (bank.type == "Checking")
-                    bank.current_balance = item.Value;
-                });
+                if (OriginalJSON_?.account?.length > 0) {
+                  OriginalJSON_?.account?.forEach((bank) => {
+                    if (bank.type == "Checking")
+                      bank.current_balance = item.Value;
+                  });
+                } else {
+                  AssetTypeOptionValue.forEach((asst)=>{
+
+                    OriginalJSON_?.account?.push({
+                      type: asst,
+                      current_balance: item.Value,
+                    });
+
+                  })
+
+                 
+                }
               }
 
               if (Number(item.Dbfieldid) === Number(-3062)) {
-                OriginalJSON_?.account?.forEach((bank) => {
-                  if (bank.type == "Savings") bank.current_balance = item.Value;
-                });
+                if (OriginalJSON_?.account?.length > 0) {
+                  OriginalJSON_?.account?.forEach((bank) => {
+                    if (bank.type == "Savings")
+                      bank.current_balance = item.Value;
+                  });
+                } else {
+                  AssetTypeOptionValue.forEach((asst)=>{
+
+                    OriginalJSON_?.account?.push({
+                      type: asst,
+                      current_balance: item.Value,
+                    });
+
+                  })
+                }
               }
 
               // if (Number(item.Dbfieldid) === Number(8388)) {
@@ -3785,8 +3976,13 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
       let currentDate = new Date();
       let formattedDate = formatDate(currentDate);
 
+      // if(iReviewed){
       originalData["SentDate"] = formattedDate;
       originalData["LoanId"] = LoanId;
+      // }
+
+      let IsReveiwflag = 0;
+      if (iReviewed) IsReveiwflag = 1;
 
       fetch(
         "https://www.solutioncenter.biz/LoginCredentialsAPI/api/SendFeedbacktoAPI?LoanId=" +
@@ -3810,12 +4006,21 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
           "&PageStart=" +
           PageStart +
           "&PageEnd=" +
-          PageEnd,
+          PageEnd +
+          "&IsReviewed=" +
+          IsReveiwflag,
         requestOptions
       )
         .then((response) => response.json())
         .then((result) => {
           //    console.log(result);
+
+          // if(!iReviewed){
+
+          //   console.log(result);
+
+          // }
+          // else{
           handleFooterMsg(JSON.parse(result.split("~")[0])["message"]);
 
           let ReponseMsg = JSON.parse(result.split("~")[0])["status"] || "";
@@ -3824,6 +4029,8 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
             setEditedResJSON(splitResult[1]);
             setEditedJobId(splitResult[2]);
             setEditedResponseMsg(splitResult[0]);
+            setEditedJSONHistoryList(JSON.parse(splitResult[4]));
+            setEditedJSONHistoryListSel(JSON.parse(splitResult[4])[0].Id);
           } else {
             setEditedResJSON(
               JSON.stringify({ message: "There were no changes" })
@@ -3831,7 +4038,7 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
             setEditedJobId("");
             setEditedResponseMsg("");
           }
-
+          // }
           // document.getElementById("spnResubmitdiv").style.display = "none";
           // document.getElementById("ResubmitProgress").style.display = "none";
         })
@@ -4562,8 +4769,8 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
                           fnValueChange({
                             target: {
                               name: "DocType",
-                              value: item.value,
-                              selectedOptions: [{ text: item.label }],
+                              value: item?.value||0,
+                              selectedOptions: [{ text: item?.label||'' }],
                             },
                           });
                           // setTimeout(() => {
@@ -4633,15 +4840,15 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
                         setChangeLogData={setChangeLogData}
                       />
                       <DropDown
-                        label="DirectWare Instituion Entity"
+                        label="Link to Institution"
                         options={EmployerList}
                         value="Id"
                         text="Name"
                         name="Name"
                         SelectedVal={EmployerListSelected}
-                        onChange={(e) => { 
+                        onChange={(e) => {
                           setEmployerListSelected(e.target.value);
-                          setEnableSave(true);                         
+                          setEnableSave(true);
                         }}
                       />
                       {/* <TextBox
@@ -4926,7 +5133,6 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
                         else fields.isHide = true;
                       }
 
-                      console.log("eAssetTypeOPtions", AssetTypeOptionValue);
                       return (
                         <>
                           {fields.ElementType === 1 ? (
@@ -4942,7 +5148,40 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
                                 handleFindFormToElements(e, true, value);
                               }}
                             ></MultipleSelectCheckmarks>
-                          ) : fields.DisplayName === "Which Borrower" ? (
+                          ) : fields.DisplayName === "Which Borrower" &&
+                            Number(DocTypeValue) == 43 &&
+                            ShowDonorName == 1 ? (
+                            <TextBox
+                              value={DonorNameSelected}
+                              onChange={(e) => {
+                                setDonorNameSelected(e.target.value);
+                              }}
+                              label="Donor Name"
+                              onMouseHover={(e, value) => {
+                                handleFindFormToElements(e, true, value);
+                              }}
+                              onMouseLeave={handleRemoveLine}
+                              setChangeLogModalOpen={setChangeLogModalOpen}
+                              LoanId={LoanId}
+                              DbFieldId="0"
+                              ScanDocId={scandocId}
+                            />
+                          ) : //   <DropDown
+                          //   label="Donor Name"
+                          //   options={BankList.filter(item => item.IsGiftRelated == 1)}
+                          //   value="Id"
+                          //   text="Name"
+                          //   name="Name"
+                          //   SelectedVal={DonorNameSelected}
+                          //   onChange={(e) => {
+                          //     setDonorNameSelected(e.target.value);
+                          //   }}
+                          // />
+                          fields.DisplayName === "Which Borrower" &&
+                            Number(DocTypeValue) == 43 ? (
+                            <></>
+                          ) : fields.DisplayName === "Which Borrower" &&
+                            Number(DocTypeValue) != 43 ? (
                             <div
                               onMouseEnter={(e, value) => {
                                 handleFindFormToElements(e, true, fields.Value);
@@ -4984,14 +5223,15 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
                                 }}
                               />
                             </div>
-                          ) : fields.DisplayName === "Owner of this Asset" ? (
+                          ) : fields.DisplayName ===
+                            "Link to Account Holder" ? (
                             <MultipleSelectCheckmarks
                               handleMultiSelect={(val) => {
                                 handleMultiSelect(val, 1);
                               }}
                               selectedKey="value"
                               value={OwnerofAssets}
-                              label="Owner of this Asset"
+                              label="Link to Account Holder"
                               Options={BorrowerList}
                               Typevalue="CustId"
                               TypeText="Name"
@@ -5000,21 +5240,22 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
                                 handleFindFormToElements(e, true, value);
                               }}
                             ></MultipleSelectCheckmarks>
-                          ): fields.DisplayName === "DirectWare Instituion Entity" ? (
+                          ) : fields.DisplayName === "Link to Institution" ? (
                             <DropDown
-                        label="DirectWare Instituion Entity"
-                        options={BankList}
-                        value="Id"
-                        text="Name"
-                        name="Name"
-                        SelectedVal={BankListSelected}
-                        onChange={(e) => {
-                          setBankListSelected(e.target.value);
-                        }}
-                      />
-                          )
-                          
-                          : (
+                              label="Link to Institution"
+                              // options={BankList.filter(
+                              //   (item) => item.IsGiftRelated != 1
+                              // )}
+                              options={BankList}
+                              value="Id"
+                              text="Name"
+                              name="Name"
+                              SelectedVal={BankListSelected}
+                              onChange={(e) => {
+                                setBankListSelected(e.target.value);
+                              }}
+                            />
+                          ) : (
                             !fields.isHide && (
                               <DynamicTextBox
                                 name={fields.DisplayName}
@@ -5291,7 +5532,7 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
                       <Switch
                         {...label}
                         value={iReviewed}
-                        checked={iReviewed} 
+                        checked={iReviewed}
                         defaultChecked={iReviewed}
                         onChange={(e) => {
                           let { value, name } = e.target;
@@ -5313,12 +5554,28 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
                           ? reviewby ||
                             formatDate(new Date()) + " by " + (userName || "")
                           : ""}
-                      </label><br></br>
+                      </label>
+                      <br></br>
                       <span style={{ marginBottom: "5%" }}>
                         <button
                           type="button"
-                          id="btnCancel"
+                          id="btnViewSimilardoc"
                           className="btn btn-primary"
+                          onClick={() =>
+                            openNewWindow(
+                              `/ViewSimilarDoc?SessionId=${SessionId}&docId=${
+                                DocTypeValue || 0
+                              }`
+                            )
+                          }
+                        >
+                          View Similar Documents
+                        </button>
+                        &nbsp;
+                        <button
+                          type="button"
+                          id="btnCancel"
+                          className="btn btn-primary outLine"
                           onClick={fnResendOCR}
                           // onClick={() => window.close()}
                           //onClick="Cancel_Overal();return false;"
@@ -5329,12 +5586,12 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
                         <button
                           type="button"
                           id="btnsave1"
-                          className={`btn ${
+                          className={`btn clsOutline ${
                             EnableSave ? "btn-primary" : "btnDisable"
                           }`}
                           disabled={!EnableSave}
                           onClick={() => {
-                            if(rotation != 0 || isRotateChanged != 0)
+                            if (rotation != 0 || isRotateChanged != 0)
                               fnDownLoad();
                             console.log(
                               "MultipleProgressbar:",
@@ -5378,13 +5635,19 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
                           >{ }</button> */}
                       </span>
                       {"  "}
-                      {ResndProcess? <> <CircularProgress
-                        size={15}
-                        style={{ margin: "0px 5px 0px 15px" }}
-                      />&nbsp;
-                                            </>: <></>
-                      }
-                      {OCRStatusResend} 
+                      {ResndProcess ? (
+                        <>
+                          {" "}
+                          <CircularProgress
+                            size={15}
+                            style={{ margin: "0px 5px 0px 15px" }}
+                          />
+                          &nbsp;
+                        </>
+                      ) : (
+                        <></>
+                      )}
+                      {OCRStatusResend}
                     </>
                   )}
                   {!FieldExtractProgres &&
@@ -5412,28 +5675,40 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
                       </span>
                     </div>
                   )}
+
+                  {JSONHistoryList.length > 0 && (
+                    <DropDown
+                      label="JSON History"
+                      options={JSONHistoryList}
+                      value="Id"
+                      text="RequestSendOn"
+                      name="RequestSendOn"
+                      SelectedVal={JSONHistoryListSel}
+                      onChange={(e) => {
+                        setJSONHistoryListSel(e.target.value);
+                        fnGetEditedJSONHistory(e.target.value, 1);
+                      }}
+                    />
+                  )}
                   {(OriginalResponsefromAPI || OriginalResJSON) &&
                     !FieldExtractProgres && (
-                      <div>
-                        <pre style={{ maxHeight: "78vh" }}>
-                          {/* {OriginalResponsefromAPI || OriginalResJSON} */}
-                          {typeof (
-                            OriginalResponsefromAPI || OriginalResJSON
-                          ) === "object"
-                            ? JSON.stringify(
-                                OriginalResponsefromAPI || OriginalResJSON,
-                                null,
-                                2
-                              )
-                            : JSON.stringify(
-                                JSON.parse(
-                                  OriginalResponsefromAPI || OriginalResJSON
-                                ),
-                                null,
-                                2
-                              )}
-                        </pre>
-                      </div>
+                      <pre style={{ maxHeight: "72vh" }}>
+                        {/* {OriginalResponsefromAPI || OriginalResJSON} */}
+                        {typeof (OriginalResponsefromAPI || OriginalResJSON) ===
+                        "object"
+                          ? JSON.stringify(
+                              OriginalResponsefromAPI || OriginalResJSON,
+                              null,
+                              2
+                            )
+                          : JSON.stringify(
+                              JSON.parse(
+                                OriginalResponsefromAPI || OriginalResJSON
+                              ),
+                              null,
+                              2
+                            )}
+                      </pre>
                     )}
                 </TabPanel>
                 <TabPanel>
@@ -5451,7 +5726,7 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
                           fnGetEditedJSONHistory(e.target.value);
                         }}
                       />
-                      <pre style={{ maxHeight: "78vh" }}>
+                      <pre style={{ maxHeight: "65vh" }}>
                         {typeof EditedResJSON === "object"
                           ? JSON.stringify(EditedResJSON, null, 2)
                           : JSON.stringify(JSON.parse(EditedResJSON), null, 2)}
@@ -5466,8 +5741,7 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
                 </TabPanel>
                 <TabPanel>
                   {CoorinatesLocation && (
-                    <div>                 
-
+                    <div>
                       <pre style={{ maxHeight: "78vh" }}>
                         {typeof CoorinatesLocation === "object"
                           ? JSON.stringify(CoorinatesLocation, null, 2)
@@ -5721,13 +5995,11 @@ function fnGetEditedJSONHistory(iEditedJSONHistoryListSel){
               className={`btn ${EnableSave ? "btn-primary" : "btnDisable"}`}
               disabled={!EnableSave}
               onClick={() => {
-
-                if(rotation != 0 || isRotateChanged != 0)
-                  fnDownLoad();
-                console.log("MultipleProgressbar:", MultipleProgressbar);
-                console.log("DocType", DocType);
-                console.log("UploadedDocument", uploadedDocument);
-                console.log("ClassifiedDoctype", ClassifiedDoctype);
+                if (rotation != 0 || isRotateChanged != 0) fnDownLoad();
+                // console.log("MultipleProgressbar:", MultipleProgressbar);
+                // console.log("DocType", DocType);
+                // console.log("UploadedDocument", uploadedDocument);
+                // console.log("ClassifiedDoctype", ClassifiedDoctype);
                 let FilterDoc = "";
                 if (MultipleProgressbar.length > 0) {
                   FilterDoc = DocType.filter(
