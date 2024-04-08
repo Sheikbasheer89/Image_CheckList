@@ -144,19 +144,19 @@ export default function CustomInputAutocomplete(props) {
                     
                   // }
                   // }
-                  onBlur={(e) => {
-                    let isExist = options.filter(
-                        (item) => item["Name"]?.trim() == newValue?.trim()
-                      ),
-                      iOptions = options.filter((item) => item.CustId != -99);
-                    if (isExist.length == 0) {
-                      iOptions.push({ CustId: -99, Name: newValue });
-                      setBorrowerList(iOptions);
-                      e.target.value = "";
-                      setIValue(newValue);
-                      onChange(null,newValue,iOptions);
-                    }
-                  }}
+                  // onBlur={(e) => {
+                  //   let isExist = options.filter(
+                  //       (item) => item["Name"]?.trim() == newValue?.trim()
+                  //     ),
+                  //     iOptions = options.filter((item) => item.CustId != -99);
+                  //   if (isExist.length == 0) {
+                  //     iOptions.push({ CustId: -99, Name: newValue });
+                  //     setBorrowerList(iOptions);
+                  //     e.target.value = "";
+                  //     setIValue(newValue);
+                  //     onChange(null,newValue,iOptions);
+                  //   }
+                  // }}
                   className="form-control"
                 />
               </div>

@@ -98,6 +98,9 @@ export default function DropDownWithSearch(props) {
     // debugger;
     setinputvalues(inputValue);
     inputRef.current.value = inputValue
+    if(inputValue == ""){
+      inputRef.current.clearValue()
+    }
   };
 
   return (
@@ -124,6 +127,7 @@ export default function DropDownWithSearch(props) {
           setinputvalues(selectedOptions?.label||'');
           debugger;
           inputRef.current.value = selectedOptions?.label||''
+          setTimeout(()=>{document.querySelector('#react-select-2-input').select()},100)
         }}
         onBlur={() => {
           

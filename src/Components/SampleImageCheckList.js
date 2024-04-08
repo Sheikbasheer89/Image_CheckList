@@ -2451,7 +2451,8 @@ function Form() {
     let FilterJSON = {},
       IsCheckValidated = 0;
     if (flag === 1 || flag === 2) FilterJSON = JSON.stringify(ParsedJson);
-    else FilterJSON = JSON.stringify(ResJSON);
+    else FilterJSON = JSON.stringify(ResJSON).replaceAll('#','');
+
 
     handleAPI({
       name: "EntityBorrCheckValidation",
@@ -3989,9 +3990,9 @@ function Form() {
           LoanId +
           "&JSONInput=" +
           JSON.stringify(originalData)
-            .replace("#", "")
-            .replace("?", "")
-            .replace("%", "")
+            .replaceAll("#", "")
+            .replaceAll("?", "")
+            .replaceAll("%", "")
             .replace(/&/g, "|A|") +
           "&ScandocId=" +
           scandocId +
@@ -4890,7 +4891,7 @@ function Form() {
                             handleFindFormToElements(e, true, value);
                           }}
                           onChange={(e, value, iBorrowerList) => {
-                            if (iBorrowerList == "selectOption")
+                            if (iBorrowerList == "selectOption"  || iBorrowerList == "clear")
                               iBorrowerList = BorrowerList;
                             let Name = value || e?.currentTarget?.textContent,
                               DocDbFields_ = DocDbFields,
