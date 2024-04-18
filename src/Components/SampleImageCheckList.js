@@ -120,6 +120,7 @@ function Form() {
   const [UploadedDocValue, setUploadedDocValue] = useState("0");
   const [DocChangeFlag, setDocChangeFlag] = useState(false);
   const [BorrowerList, setBorrowerList] = useState([]);
+  const [AccountHolderMap, setAccountHolderMap] = useState([]);
   const [EmployerList, setEmployerList] = useState([]);
   const [EmployerListSelected, setEmployerListSelected] = useState(0);
   const [BankList, setBankList] = useState([]);
@@ -325,7 +326,7 @@ function Form() {
   //   handleMultiSelect(handleMultiSelect);
   // }, [AssetTypeOptionValue])
   const handleMultiSelect = (val, flag) => {
-    if (flag != 1) {
+    if (flag != 1 && flag != 2) {
       if (val && val.indexOf("Gift in Borrower Possession") > -1)
         setShowDonorName(1);
       else setShowDonorName(0);
@@ -335,7 +336,10 @@ function Form() {
     val = val.filter((item, index) => val.indexOf(item) === index);
     if (flag == 1) {
       setOwnerofAssets(val);
-    } else {
+    } 
+    else if(flag == 2)
+      setAccountHolderMap(val);
+    else {
       setAssetTypeOptionValue(val);
     }
     setEnableSave(true);
@@ -2458,7 +2462,7 @@ function Form() {
       name: "EntityBorrCheckValidation",
       params: {
         LoanId: LoanId,
-        FilterJSON: FilterJSON,
+        FilterJSON: FilterJSON.replaceAll('&','|A|'),
         DocType: Number(DocTypeValue),
       },
     })
@@ -3657,6 +3661,7 @@ function Form() {
                       "Company Name - Issuing Policy"
                     )
                     .replace("Insurance Company Name", "Company Name")
+                    .replace("Account Holder Name", "People Insured")
                 ];
               if (iDisplayName == undefined && ParsedJson[0] != undefined)
                 iDisplayName =
@@ -3669,6 +3674,7 @@ function Form() {
                         "Company Name - Issuing Policy"
                       )
                       .replace("Insurance Company Name", "Company Name")
+                      .replace("Account Holder Name", "People Insured")
                   ];
               item["Value"] = iDisplayName;
               if (Number(item.Dbfieldid) === Number(4652))
@@ -5241,7 +5247,24 @@ function Form() {
                                 handleFindFormToElements(e, true, value);
                               }}
                             ></MultipleSelectCheckmarks>
-                          ) : fields.DisplayName === "Link to Institution" ? (
+                          ) : fields.DisplayName ===
+                          "Account Holder Map To" ? (
+                          <MultipleSelectCheckmarks
+                            handleMultiSelect={(val) => {
+                              handleMultiSelect(val, 2);
+                            }}
+                            selectedKey="value"
+                            value={AccountHolderMap}
+                            label="Account Holder Map To"
+                            Options={BorrowerList}
+                            Typevalue="CustId"
+                            TypeText="Name"
+                            onMouseHover={(e, value) => {
+                              // debugger;
+                              handleFindFormToElements(e, true, value);
+                            }}
+                          ></MultipleSelectCheckmarks>
+                        )  : fields.DisplayName === "Link to Institution" ? (
                             <DropDown
                               label="Link to Institution"
                               // options={BankList.filter(
